@@ -1,0 +1,19 @@
+{
+  "name": "luckyduckspack",
+  "version": "1.0.0",
+  "description": "Lucky Ducks Pack NFT collection",
+  "main": "index.js",
+  "scripts": {
+    "test": "truffle test"
+  },
+  "keywords": [
+    "nft",
+    "erc721",
+    "luckyduckspack"
+  ],
+  "author": "quacklabs",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.7.3"
+  }
+}
