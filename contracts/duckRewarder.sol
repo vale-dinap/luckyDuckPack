@@ -11,7 +11,7 @@ contract duckRewarder{
 
     address duckLord; // Creator
 
-    mapping(uint256 => Dividend)
+    //mapping(uint256 => Dividend);
 
     uint256 balance;
 
