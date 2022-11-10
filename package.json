@@ -14,6 +14,7 @@
   "author": "quacklabs",
   "license": "MIT",
   "dependencies": {
+    "@chainlink/contracts": "^0.5.1",
     "@openzeppelin/contracts": "^4.7.3",
     "dotenv": "^16.0.3",
     "truffle-plugin-verify": "^0.5.32"
