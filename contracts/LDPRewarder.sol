@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-contract duckRewarder{
+contract LDPRewarder{
 
     struct Dividend{
         uint256 timestamp; //
@@ -9,7 +9,7 @@ contract duckRewarder{
         uint256 earningDucks; // amount of ducks currently eligible
     }
 
-    address duckLord; // Creator
+    address ducker; // Creator
 
     //mapping(uint256 => Dividend);
 

@@ -9,13 +9,12 @@ import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/D
 
 // TODO: test opensea code snippet
 // TODO: test chainlinkVRF, consider replacing with V2
-// TODO: update chainlinkVRF hardcoded variables (check values online)
+// TODO: update chainlinkVRF hardcoded variables (check values online 2 LINK on ethereum mainnet)
 // TODO: add ERC2981 fee data
 // TODO: add contract intro comment
-// TODO: replace contractURI with a pure function
 // TODO: replace ALL "REPLACE_ME" strings
 
-contract LuckyDucksPack is
+contract LDP is
     Ownable,
     ERC721("Lucky Ducks Pack", "LDP"),
     DefaultOperatorFilterer,
@@ -34,6 +33,8 @@ contract LuckyDucksPack is
     uint256 public totalSupply;
     // Minter contract address
     address public minterContract;
+    // Whether the reveal randomness has been requested to Chainlink
+    bool private _revealRequested;
     /**
      * @notice When all tokens are minted, a random offset is generated via VRF;
      * [Revealed ID] = ([Token ID] + [Offset]) % [Max Supply].
@@ -45,9 +46,8 @@ contract LuckyDucksPack is
     uint256 public REVEAL_OFFSET;
     address private constant VRFcoordinator =
         0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B;
-    bool private _revealRequested;
-    bytes32 private keyHash; // Required by VRF
-    uint256 private fee; // Required by VRF
+    bytes32 private keyHash; // Required by Chainlink VRF
+    uint256 private fee; // Required by Chainlink VRF
 
     constructor()
         VRFConsumerBase(
