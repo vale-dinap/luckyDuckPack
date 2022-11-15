@@ -14,13 +14,27 @@ import "./WethUnwrapper.sol";
 // TODO: when the contract is completed double check contract description comment
 
 /**
- * @dev Lucky Ducks Pack rewarder contract: its address is used as creator fee
- * receiver. When a token from the LDP collection is sold and creator fees are
- * sent to it, it allows token holders to claim their revenues.
- * A small part of the revenues (6.25%) is sent to the collection creator.
- * This contract is unstoppable, unpausable, mostly immutable: admin can only
- * amend the creator address, but has no way to withdraw funds meant for token
- * holders.
+ * @dev Lucky Ducks Pack rewarder contract: this contract's address is the NFT
+ * collection's creator fees receiver.
+ *
+ * When a token from the LDP collection is traded and creator fees are sent to this,
+ * token holders are able to claim their share of revenues by calling {withdraw}.
+ *
+ * A small portion of the revenues (6.25%) is forwarded to the collection creator,
+ * token holders earn the remaining 93.75% proportionally to the amount of tokens
+ * they hold.
+ *
+ * Revenues are bound to tokens, not to holder addresses: in other words,
+ * selling a token without claiming its revenues first will transfer the ability
+ * to claim them to the buyer.
+ *
+ * Supported currencies are ETH and WETH by default. If creator fees are received
+ * in other tokens, a separate set of functions (callable by anyone) allow
+ * to manually distribute/withdraw them.
+ *
+ * This contract is fair, unstoppable, unpausable, mostly immutable: admin can only
+ * amend the creator address, but has no way to access funds meant for token
+ * holders nor change the contract's behaviour.
  */
 contract LDPRewarder is Ownable, ReentrancyGuard{
 
@@ -40,8 +54,6 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
     Revenues private _revenues;
 
     ///
-    address[] private _revenueTokens;
-    mapping(address=>bool) private _isRevenueToken;
     mapping(address => Revenues) private _revenuesErc20; // (token contract address => Revenues)
     ///
 
@@ -54,7 +66,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
     WethUnwrapper private immutable wethUnwrapper;
 
     /**
-     * @dev Failsafe: set admin address as default beneficiary for creator
+     * @dev Failsafe: set admin address as default beneficiary of creator
      * earnings.
      * Initialize the WETH unwrapper contract.
      */
@@ -65,7 +77,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
 
     /**
      * @notice Link the token contract instance to the nft contract address.
-     * Can be set only once, then it becomes immutable.
+     * Can be set only once and becomes immutable afterwards.
      */
     function setNftAddress(address nftAddr) external onlyOwner{
         require(address(nft)==address(0), "Overriding denied");
@@ -104,8 +116,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
         _holderWithdraw(msg.sender);
     }
 
-    // function to show token earnings and user earnings, implement
-
+    // function to show token earnings and user earnings, TODO: implement
     //function reveiceERC20token TODO: implement this
 
     // INTERNAL LOGICS - Incoming transactions
