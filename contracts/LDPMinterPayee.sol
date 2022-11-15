@@ -2,40 +2,66 @@
 pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./lib/interfaces/ILDP.sol";
+
+// TODO: add comments, double-check everything
 
 contract LDPMinterPayee is Ownable {
+    uint256 private constant incentivesPerMint = 0.3 ether;
     address payable public constant rewarderContract=payable(0); // TODO: REPLACE THIS WITH ACTUAL ADDRESS OR METHOD TO SET
-    uint256 paymentsWithdrawn;
     address public nftContract;
-    address ducker;
+    address minterContract;
+    address private _ducker;
 
     constructor(){
-        ducker = msg.sender;
+        _ducker = msg.sender;
     }
 
+    /**
+     * @dev Emitted if funds are manually sent to this contract (no sale involved).
+     */
+    event Donated(address indexed donator, uint256 indexed amount);
+
+    /**
+     * @dev Error when input is address(0).
+     */
+    error ZeroAddressUsed();
+
+    /**
+     * @dev Error when a payment fails.
+     */
+    error PaymentFailed();
+
     function setNftAddress(address newAddress) external onlyOwner{
-        require(newAddress!=address(0), "Attempting to set zero address");
+        if (newAddress==address(0)) revert ZeroAddressUsed();
         nftContract = newAddress;
     }
 
-    function withdraw() external onlyOwner{
-        uint256 totalSupply = _nft().totalSupply();
-        require(totalSupply>10, "No sales yet"); // The first 10 tokens are reserved to the team (not sold)
-        uint256 amountSold = totalSupply-10;
-        uint256 toWithdraw = amountSold-paymentsWithdrawn;
-        if(toWithdraw>0){
-            uint256 incentivesToStash = toWithdraw * 0.3 ether;
-            (bool success, ) = rewarderContract.call{value: incentivesToStash}("");
-            if(success) payable(msg.sender).transfer(address(this).balance);
-            else revert("Something went wrong");
-        }
+    function setDuckerAddress(address newAddress) external onlyOwner{
+        if (newAddress==address(0)) revert ZeroAddressUsed();
+        _ducker = newAddress;
     }
 
-    function _nft() view private returns(ILDP){
-        return ILDP(nftContract);
+    /**
+     * @dev Admin function to withdraw the proceeds.
+     */
+    function withdrawProceeds() external onlyOwner{
+        payable(_ducker).transfer(address(this).balance);
     }
 
-    receive() external payable{}
+    /**
+     * @dev Callable only by the minter contract, forwards a portion of the funds
+     * to the {LDPRewarder} contract in order to distribute them as initial incentives.
+     */
+    function processPayment(uint256 amount) external payable{
+        require(msg.sender == minterContract);
+        (bool paid, ) = rewarderContract.call{value: incentivesPerMint*amount}(""); // TODO: replace with function to send incentives
+        if(!paid) revert PaymentFailed();
+    }
+
+    /**
+     * @dev If anyone donates ETH to this contract I will make good use of it. :)
+     */
+    receive() external payable{
+        emit Donated(tx.origin, msg.value);
+    }
 }

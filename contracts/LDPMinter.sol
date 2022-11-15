@@ -4,10 +4,7 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./lib/interfaces/ILDP.sol";
-
-// TODO: build payment receiver contract. It must somehow check how
-// many tokens have been minted and send 0.3 eth for each to the rewarder
-// address as initial incentives
+import "./lib/interfaces/ILDPMinterPayee.sol";
 
 /**
  * @dev Lucky Ducks Pack minter contract.
@@ -18,36 +15,35 @@ contract LDPMinter is Ownable, ReentrancyGuard{
     uint256 private constant _price1 = 1.3 ether; // From 1 to 3333
     uint256 private constant _price2 = 1.8 ether; // From 3334 to 6666
     uint256 private constant _price3 = 2.3 ether; // From 6667 to 10000
-    // Instance of the token contract
-    ILDP constant nft = ILDP(address(0)); // TODO: REPLACE address(0) with NFT contract address
     // Minting start time (Unix timestamp)
     uint256 public mintingStartTime;
-    // Address receiving payments
-    address payable public payee;
+    // Instance of the token contract
+    ILDP public nft;
+    // Instance of the minting payee contract
+    ILDPMinterPayee public payee;
 
     /**
-     * @notice Store the address that will receive payments.
+     * @notice Link the token contract instance to the nft contract address.
+     * Can be set only once, then it becomes immutable.
      */
-    function setPayee(address payable payeeAddr) external onlyOwner{
-        require(payeeAddr!=address(0));
-        payee = payeeAddr;
+    function setNftAddress(address nftAddr) external onlyOwner{
+        require(address(nft)==address(0), "Overriding denied");
+        nft = ILDP(nftAddr);
     }
-
+    
     /**
-     * @notice Mint (buy) tokens to the caller address.
-     * @param amount Number of tokens to be minted, max 10 per call.
+     * @notice Link the payee contract instance to the payee contract address.
      */
-    function mint(uint256 amount) external payable nonReentrant {
-        require(block.timestamp>mintingStartTime, "Minting not started");
-        if(amount>10) revert("Attempted to mint more than 10");
-        require(msg.value>=_currentPrice()*amount, "Price paid incorrect");
-        (bool paid, ) = payee.call{value: msg.value}("");
-        if(!paid) revert("Payment error");
-        else _mintBatch(amount);
+    function setPayeeAddress(address payeeAddr) external onlyOwner{
+        require(payeeAddr!=address(0));
+        payee = ILDPMinterPayee(payeeAddr);
     }
 
     /**
      * @notice Set minting start time and reserve 10 tokens to admin's address.
+     * @dev This function cannot be called more than once, so admin won't be able to
+     * grab more than 10 free tokens (0.1% of the supply).
+     * @param startTime Minting start time (Unix timestamp)
      */
     function initializeMinting(uint256 startTime) external onlyOwner {
         if(mintingStartTime>0) revert("Already initialized");
@@ -56,6 +52,23 @@ contract LDPMinter is Ownable, ReentrancyGuard{
             mintingStartTime = startTime;
             _mintBatch(10);
         }
+    }
+
+    /**
+     * @notice Mint (buy) tokens to the caller address.
+     * @param amount Number of tokens to be minted, max 10 per transaction.
+     */
+    function mint(uint256 amount) external payable nonReentrant {
+        // Revert if minting hasn't started
+        require(block.timestamp>mintingStartTime, "Minting not started");
+        // Revert if attempting to mint more than 10 tokens at once
+        if(amount>10) revert("Attempted to mint more than 10");
+        // Revert if underpaying
+        require(msg.value>=_currentPrice()*amount, "Price paid incorrect");
+        // Forward payment to payee address
+        payee.processPayment{value: msg.value}(amount);
+        // Finally, mint tokens
+        _mintBatch(amount);
     }
 
     /**

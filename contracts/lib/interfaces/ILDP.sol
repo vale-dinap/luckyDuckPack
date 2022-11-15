@@ -18,4 +18,8 @@ interface ILDP{
      * @dev Returns the supply cap.
      */
     function MAX_SUPPLY() view external returns(uint256);
+    /**
+     * @dev Returns the token balance of `owner`.
+     */
+    function balanceOf(address owner) view external returns(uint256);
 }

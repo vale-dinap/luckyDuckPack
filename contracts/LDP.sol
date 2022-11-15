@@ -13,6 +13,7 @@ import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/D
 // TODO: add ERC2981 fee data
 // TODO: add contract intro comment
 // TODO: replace ALL "REPLACE_ME" strings
+// TODO: implement ERC721Enumerable features to allow multi-token earnings withdraw
 
 contract LDP is
     Ownable,
