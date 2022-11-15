@@ -10,7 +10,18 @@ import "./WethUnwrapper.sol";
 // TODO: incentives code
 // TODO: other tokens integration?
 // TODO: complete holderWIthdraw implementation
+// TODO: consider replacing weth unwrapper with simple ERC20 distribution
+// TODO: when the contract is completed double check contract description comment
 
+/**
+ * @dev Lucky Ducks Pack rewarder contract: its address is used as creator fee
+ * receiver. When a token from the LDP collection is sold and creator fees are
+ * sent to it, it allows token holders to claim their revenues.
+ * A small part of the revenues (6.25%) is sent to the collection creator.
+ * This contract is unstoppable, unpausable, mostly immutable: admin can only
+ * amend the creator address, but has no way to withdraw funds meant for token
+ * holders.
+ */
 contract LDPRewarder is Ownable, ReentrancyGuard{
 
     // Type defining revenues info
@@ -34,14 +45,19 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
     mapping(address => Revenues) private _revenuesErc20; // (token contract address => Revenues)
     ///
 
-    // Creator
+    // Creator address
     address payable private _creator;
-    // Instance of the LDP token contract
+    // Lucky Ducks Pack NFT contract
     ILDP public nft;
-    // Instances of the WETH (token) and WETH Unwrapper contracts
-    IWETH public constant Weth = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    // WETH token and WETH Unwrapper contracts
+    IWETH private constant Weth = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     WethUnwrapper private immutable wethUnwrapper;
 
+    /**
+     * @dev Failsafe: set admin address as default beneficiary for creator
+     * earnings.
+     * Initialize the WETH unwrapper contract.
+     */
     constructor(){
         _creator = payable(msg.sender);
         wethUnwrapper = new WethUnwrapper(address(Weth));
@@ -87,6 +103,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
     function withdraw() external nonReentrant{
         _holderWithdraw(msg.sender);
     }
+
+    // function to show token earnings and user earnings, implement
 
     //function reveiceERC20token TODO: implement this
 
