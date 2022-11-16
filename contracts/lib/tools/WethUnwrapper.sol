@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "./lib/interfaces/IWETH.sol";
+import "../interfaces/IWETH.sol";
 
 /**
  * @dev Workaround to embed WETH unwraps in more complex logics without running out of gas.

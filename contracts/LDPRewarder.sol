@@ -5,8 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/erc20/IERC20.sol";
 import "./lib/interfaces/ILDP.sol";
-import "./lib/interfaces/IWETH.sol";
-import "./WethUnwrapper.sol";
+import "./lib/tools/WethUnwrapper.sol";
 
 // TODO: incentives code
 // TODO: withdraw single token earnings
@@ -19,7 +18,7 @@ import "./WethUnwrapper.sol";
  * When fees from a Lucky Ducks Pack token trade are received, token holders
  * are able to claim their share of revenues by calling {cashout}.
  *
- * A small portion of the revenues (6.25%) is forwarded to the collection creator,
+ * A small portion of the revenues (6.25%) is reserved to the collection creator,
  * token holders earn the remaining 93.75%, proportionally to the amount of tokens
  * they hold.
  *
@@ -29,10 +28,10 @@ import "./WethUnwrapper.sol";
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
  * are received in other tokens, a separate set of functions to manually
- * distribute/withdraw them is available and callable by anyone.
+ * process/cashout them is available and callable by anyone.
  *
  * This contract is fair, unstoppable, unpausable, mostly immutable: admin can only
- * amend the creator address, but has no way to access funds meant for token
+ * amend the creator address, but has no way to access funds meant for NFT
  * holders nor change the contract's behaviour.
  *
  * In addition, all public/external functions involving transfers of funds (included
@@ -69,9 +68,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     address payable private _creator;
     // Lucky Ducks Pack NFT contract
     ILDP public nft;
-    // WETH token and WETH Unwrapper contracts
-    IWETH private constant weth =
-        IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    // WETH token address and WETH Unwrapper contract
+    address private constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     WethUnwrapper private immutable wethUnwrapper;
 
     /**
@@ -81,7 +79,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     constructor() {
         _creator = payable(msg.sender);
-        wethUnwrapper = new WethUnwrapper(address(weth));
+        wethUnwrapper = new WethUnwrapper(weth);
     }
 
     // EVENTS //
@@ -105,7 +103,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * operating with WETH.
      */
     modifier noWeth(address tokenContract) {
-        require(tokenContract != address(weth), "Not allowed with WETH");
+        require(tokenContract != weth, "Not allowed with WETH");
         _;
     }
 
@@ -189,7 +187,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (bool)
     {
-        if (tokenAddress == address(weth)) return true;
+        if (tokenAddress == weth) return true;
         else
             return
                 IERC20(tokenAddress).balanceOf(address(this)) ==
@@ -226,7 +224,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        if (tokenAddress == address(weth)) return 0;
+        if (tokenAddress == weth) return 0;
         else return _getNftRevenues(_erc20Revenues[tokenAddress], tokenId);
     }
 
@@ -258,7 +256,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256 accruedRevenues)
     {
-        if (tokenAddress == address(weth)) return 0;
+        if (tokenAddress == weth) return 0;
         else {
             for (uint256 i; i < nft.balanceOf(account); ++i) {
                 accruedRevenues += _getNftRevenues(
@@ -285,9 +283,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * could not occur if the creator fees are received in WETH.
      */
     function _unwrapWethIfAny() private {
-        uint256 bal = weth.balanceOf(address(this));
+        uint256 bal = IWETH(weth).balanceOf(address(this));
         if (bal > 0) {
-            weth.transfer(address(wethUnwrapper), bal);
+            IWETH(weth).transfer(address(wethUnwrapper), bal);
             wethUnwrapper.unwrap(bal);
             wethUnwrapper.withdraw();
         }
