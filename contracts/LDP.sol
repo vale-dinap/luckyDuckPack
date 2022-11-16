@@ -13,7 +13,6 @@ import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/D
 // TODO: add ERC2981 fee data
 // TODO: add contract intro comment
 // TODO: replace ALL "REPLACE_ME" strings
-// TODO: implement ERC721Enumerable features to allow multi-token earnings withdraw
 
 contract LDP is
     Ownable,
@@ -49,6 +48,10 @@ contract LDP is
         0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B;
     bytes32 private keyHash; // Required by Chainlink VRF
     uint256 private fee; // Required by Chainlink VRF
+    // Enumeration: Mapping from owner to list of owned token IDs
+    mapping(address => mapping(uint256 => uint256)) private _ownedTokens;
+    // Enumeration: Mapping from token ID to index of the owner tokens list
+    mapping(uint256 => uint256) private _ownedTokensIndex;
 
     constructor()
         VRFConsumerBase(
@@ -57,7 +60,7 @@ contract LDP is
         )
     {
         keyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311;
-        fee = 0.1 * 10**18; // 0.1 LINK (Varies by network)
+        fee = 2 * 10**18; // Goerli: 0.1 LINK, Ethereum Mainnet: 2 LINK
     }
 
     // EVENTS //
@@ -186,5 +189,58 @@ contract LDP is
         onlyAllowedOperator(from)
     {
         super.safeTransferFrom(from, to, tokenId, data);
+    }
+
+    // OWNED TOKENS ENUMERATION //
+
+    /**
+     * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
+     */
+    function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256) {
+        require(index < ERC721.balanceOf(owner), "Index out of bounds");
+        return _ownedTokens[owner][index];
+    }
+
+    /**
+     * @dev Adds owner enumeration to token transfers.
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, tokenId);
+        if (from != to) {
+            if(from != address(0)){_removeFromEnumeration(from, tokenId);}
+            _addToEnumeration(to, tokenId);
+        }
+    }
+
+    /**
+     * @dev Add a token to ownership-tracking data structures.
+     * @param to address representing the new owner of the given token ID
+     * @param tokenId uint256 ID of the token to be added to the tokens list of the given address
+     */
+    function _addToEnumeration(address to, uint256 tokenId) private {
+        uint256 length = ERC721.balanceOf(to);
+        _ownedTokens[to][length] = tokenId;
+        _ownedTokensIndex[tokenId] = length;
+    }
+
+    /**
+     * @dev Remove a token from ownership-tracking data structures. Note that
+     * @param from address representing the previous owner of the given token ID
+     * @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
+     */
+    function _removeFromEnumeration(address from, uint256 tokenId) private {
+        uint256 lastTokenIndex = ERC721.balanceOf(from) - 1;
+        uint256 tokenIndex = _ownedTokensIndex[tokenId];
+        if (tokenIndex != lastTokenIndex) {
+            uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
+            _ownedTokens[from][tokenIndex] = lastTokenId;
+            _ownedTokensIndex[lastTokenId] = tokenIndex;
+        }
+        delete _ownedTokensIndex[tokenId];
+        delete _ownedTokens[from][lastTokenIndex];
     }
 }

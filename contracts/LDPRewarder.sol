@@ -3,25 +3,24 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/erc20/IERC20.sol";
 import "./lib/interfaces/ILDP.sol";
 import "./lib/interfaces/IWETH.sol";
 import "./WethUnwrapper.sol";
 
 // TODO: incentives code
-// TODO: other tokens integration?
-// TODO: complete holderWIthdraw implementation
 // TODO: consider replacing weth unwrapper with simple ERC20 distribution
 // TODO: when the contract is completed double check contract description comment
 
 /**
- * @dev Lucky Ducks Pack rewarder contract: this contract's address is the NFT
- * collection's creator fees receiver.
+ * @dev Lucky Ducks Pack rewarder contract
  *
- * When a token from the LDP collection is traded and creator fees are sent to this,
+ * This contract's address is the NFT collection's creator fees receiver.
+ * When a token from the LDP collection is traded and creator fees are sent to here,
  * token holders are able to claim their share of revenues by calling {withdraw}.
  *
  * A small portion of the revenues (6.25%) is forwarded to the collection creator,
- * token holders earn the remaining 93.75% proportionally to the amount of tokens
+ * token holders earn the remaining 93.75%, proportionally to the amount of tokens
  * they hold.
  *
  * Revenues are bound to tokens, not to holder addresses: in other words,
@@ -36,33 +35,38 @@ import "./WethUnwrapper.sol";
  * amend the creator address, but has no way to access funds meant for token
  * holders nor change the contract's behaviour.
  */
-contract LDPRewarder is Ownable, ReentrancyGuard{
-
+contract LDPRewarder is Ownable, ReentrancyGuard {
     // Type defining revenues info
-    struct Revenues{
+    struct Revenues {
         uint256 lifetimeEarnings; // Lifetime amount earned per NFT
-        mapping(uint256=>uint256) lifetimeCollected; // NFT ID => amount
+        mapping(uint256 => uint256) lifetimeCollected; // NFT ID => amount
     }
 
+    // Type defining incentives info
     /*struct Incentive{
         uint256 amount;
         mapping(uint256=>uint256) collected; // NFT ID => amount
+        uint256 startTime;
         uint16 distributionDays;
     }*/
 
     // Store ETH revenues data
     Revenues private _revenues;
+    // Store ERC20 tokens revenues data
+    mapping(address => Revenues) private _revenuesErc20; // Token address => Revenues
+    // Keeps track of the processed ERC20 revenues to identify and process new received funds
+    mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
 
-    ///
-    mapping(address => Revenues) private _revenuesErc20; // (token contract address => Revenues)
-    ///
+    // Store incentives data
+    /*Incentive private _incentives;*/
 
     // Creator address
     address payable private _creator;
     // Lucky Ducks Pack NFT contract
     ILDP public nft;
     // WETH token and WETH Unwrapper contracts
-    IWETH private constant Weth = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
+    IWETH private constant Weth =
+        IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
     WethUnwrapper private immutable wethUnwrapper;
 
     /**
@@ -70,27 +74,46 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
      * earnings.
      * Initialize the WETH unwrapper contract.
      */
-    constructor(){
+    constructor() {
         _creator = payable(msg.sender);
         wethUnwrapper = new WethUnwrapper(address(Weth));
     }
+
+    // EVENTS //
+
+    /**
+     * @dev Emitted when ETH is withdrawn.
+     */
+    event WithdrawEth(address indexed account, uint256 indexed amount);
+    /**
+     * @dev Emitted when an ERC20-token is withdrawn.
+     */
+    event WithdrawErc20(
+        address indexed account,
+        uint256 indexed amount,
+        address indexed token
+    );
+
+    // ADMIN FUNCTIONS //
 
     /**
      * @notice Link the token contract instance to the nft contract address.
      * Can be set only once and becomes immutable afterwards.
      */
-    function setNftAddress(address nftAddr) external onlyOwner{
-        require(address(nft)==address(0), "Overriding denied");
+    function setNftAddress(address nftAddr) external onlyOwner {
+        require(address(nft) == address(0), "Overriding denied");
         nft = ILDP(nftAddr);
     }
 
     /**
      * @notice Admin function to amend the creator address.
      */
-    function setCreatorAddress(address newAddress) external onlyOwner{
-        require(newAddress!=address(0));
+    function setCreatorAddress(address newAddress) external onlyOwner {
+        require(newAddress != address(0));
         _creator = payable(newAddress);
     }
+
+    // PAYMENT FALLBACK //
 
     /**
      * @dev Handles the received fees as follows:
@@ -99,47 +122,130 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
      * -unwrap any WETH previously sent to this smart-contract and
      * handle these likewise.
      */
-    receive() external payable{
-        uint256 holdersCut;
-        uint256 creatorsCut;
-        (creatorsCut, holdersCut) = _calculateCuts(msg.value);
-        _revenues.lifetimeEarnings+=(holdersCut/10000);
-        _creatorPayout(creatorsCut);
+    receive() external payable {
+        _processNewRevenues(msg.value);
         _unwrapWethIfAny();
     }
+
+    // USER FUNCTIONS //
 
     /**
      * @notice Allows LDP holders to withdraw the revenues generated by
      * their tokens.
      */
-    function withdraw() external nonReentrant{
+    function withdraw() external nonReentrant {
         _holderWithdraw(msg.sender);
     }
 
-    // function to show token earnings and user earnings, TODO: implement
-    //function reveiceERC20token TODO: implement this
-
-    // INTERNAL LOGICS - Incoming transactions
-
     /**
-     * @dev Send funds to creator address.
+     * @notice Similar to {withdraw} but works with any ERC20 token.
+     * @param tokenAddress Address of the ERC20 token contract.
      */
-    function _creatorPayout(uint256 amount) private{
-        (bool success, ) = _creator.call{value: amount}("");
-        require(success, "Payout error");
+    function withdrawErc20(address tokenAddress) external {
+        require(tokenAddress != address(Weth), "Use 'withdraw' for WETH");
+        _processNewRevenuesErc20(tokenAddress);
+        _holderWithdrawErc20(tokenAddress, msg.sender);
     }
 
     /**
-     * @dev Calculate holders and creator revenues from the given amount.
+     * @notice Returns true if the revenue records of the provided ERC20 token
+     * are up to date.
+     * @param tokenAddress Address of the ERC20 token contract.
      */
-    function _calculateCuts(uint256 amount)
-        pure
-        private
-        returns(uint256 creatorsCut, uint256 holdersCut)
+    function isErc20infoUpToDate(address tokenAddress)
+        external
+        view
+        returns (bool)
     {
-        creatorsCut=amount/16; // 6.25% to creator
-        holdersCut=amount-creatorsCut; // 93.75% to holders
+        if (tokenAddress == address(Weth)) return true;
+        else
+            return
+                IERC20(tokenAddress).balanceOf(address(this)) ==
+                _processedErc20Revenues[tokenAddress];
     }
+
+    /**
+     * @notice Force updating the revenue records of the provided ERC20 token;
+     * while ETH and WETH are automatically updated by {receive}, this is not
+     * possible with ERC20 tokens.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function forceUpdateErc20info(address tokenAddress) external {
+        require(tokenAddress != address(Weth), "No need to update WETH data");
+        _processNewRevenuesErc20(tokenAddress);
+    }
+
+    /**
+     * @notice Returns the revenues accrued by the specified token id.
+     */
+    function tokenRevenues(uint256 tokenId) external view returns (uint256) {
+        return
+            _revenues.lifetimeEarnings - _revenues.lifetimeCollected[tokenId];
+    }
+
+    /**
+     * @notice Returns the sum of all revenues accrued by the tokens owned by the given account.
+     */
+    function accountRevenues(address account)
+        external
+        view
+        returns (uint256 accruedEth)
+    {
+        for (uint256 i; i < nft.balanceOf(account); ++i) {
+            accruedEth +=
+                _revenues.lifetimeEarnings -
+                _revenues.lifetimeCollected[
+                    nft.tokenOfOwnerByIndex(account, i)
+                ];
+        }
+    }
+
+    /**
+     * @notice ERC20-token version of {tokenRevenues}.
+     * @param tokenId Id of the LDP nft.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function tokenRevenuesErc20(uint256 tokenId, address tokenAddress)
+        external
+        view
+        returns (uint256)
+    {
+        if (tokenAddress == address(Weth)) return 0;
+        else
+            return
+                _revenuesErc20[tokenAddress].lifetimeEarnings -
+                _revenuesErc20[tokenAddress].lifetimeCollected[tokenId];
+    }
+
+    /**
+     * @notice ERC20-token version of {accountRevenues}.
+     * @param account Holder's address.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function accountRevenuesErc20(address account, address tokenAddress)
+        external
+        view
+        returns (uint256 accruedEth)
+    {
+        if (tokenAddress == address(Weth)) return 0;
+        else {
+            for (uint256 i; i < nft.balanceOf(account); ++i) {
+                accruedEth +=
+                    _revenuesErc20[tokenAddress].lifetimeEarnings -
+                    _revenuesErc20[tokenAddress].lifetimeCollected[
+                        nft.tokenOfOwnerByIndex(account, i)
+                    ];
+            }
+        }
+    }
+
+    // INTERNAL LOGICS - Incentives
+
+    /*function _processIncentives(uint256 tokenId) private returns(uint256){
+
+    }*/
+
+    // INTERNAL LOGICS - WETH unwrap
 
     /**
      * @dev If this smart-contract holds any WETH, unwrap it.
@@ -148,26 +254,48 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
      * as normally the automatic revenues distribution cannot occur
      * if the creator fees are paid out in WETH.
      */
-    function _unwrapWethIfAny() private{
+    function _unwrapWethIfAny() private {
         uint256 bal = Weth.balanceOf(address(this));
-        if(bal>0) {
+        if (bal > 0) {
             Weth.transfer(address(wethUnwrapper), bal);
             wethUnwrapper.unwrap(bal);
             wethUnwrapper.withdraw();
         }
     }
 
-    // INTERNAL LOGICS - Withdraws
+    // INTERNAL LOGICS - Ether revenues
+
+    function _processNewRevenues(uint256 amount)
+        private
+        returns (uint256 creatorsCut)
+    {
+        uint256 holdersCut;
+        (creatorsCut, holdersCut) = _calculateCuts(amount);
+        _revenues.lifetimeEarnings += (holdersCut / 10000);
+        _creatorPayout(creatorsCut);
+    }
 
     /**
-     * @dev Calculate holders and creator revenues from the given amount.
+     * @dev Send to `account` all revenues accrued by their tokens.
      */
-    function _holderWithdraw(address account) private{
+    function _holderWithdraw(address account) private {
         uint256 amount;
-        for(uint256 i; i<nft.balanceOf(account); ++i){
-            amount += _processWithdrawalData(0); // TODO: replace "0" with to tokenOfOwnerByIndex
+        for (uint256 i; i < nft.balanceOf(account); ++i) {
+            amount += _processWithdrawalData(
+                nft.tokenOfOwnerByIndex(account, i)
+            );
         }
+        emit WithdrawEth(account, amount);
         payable(msg.sender).transfer(amount);
+    }
+
+    /**
+     * @dev Send funds to creator address.
+     * @param amount Ether to send.
+     */
+    function _creatorPayout(uint256 amount) private {
+        (bool success, ) = _creator.call{value: amount}("");
+        require(success, "Payout error");
     }
 
     /**
@@ -175,9 +303,94 @@ contract LDPRewarder is Ownable, ReentrancyGuard{
      * claimable by the specified token ID and records that these revenues
      * have now been collected.
      */
-    function _processWithdrawalData(uint256 tokenId) private returns(uint256 accruedRevenues){
-        accruedRevenues = _revenues.lifetimeEarnings-_revenues.lifetimeCollected[tokenId];
-        _revenues.lifetimeCollected[tokenId]=_revenues.lifetimeEarnings;
+    function _processWithdrawalData(uint256 tokenId)
+        private
+        returns (uint256 accruedRevenues)
+    {
+        accruedRevenues =
+            _revenues.lifetimeEarnings -
+            _revenues.lifetimeCollected[tokenId];
+        _revenues.lifetimeCollected[tokenId] = _revenues.lifetimeEarnings;
     }
 
+    // INTERNAL LOGICS - ERC20 revenues
+
+    /**
+     * @dev If new units of the input ERC20 token have been received since the
+     * last call, update the token's revenue records and payout the creator's cut.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function _processNewRevenuesErc20(address tokenAddress) private {
+        uint256 curBalance = IERC20(tokenAddress).balanceOf(address(this));
+        uint256 processedRevenues = _processedErc20Revenues[tokenAddress];
+        if (curBalance != processedRevenues) {
+            uint256 holdersCut;
+            uint256 creatorsCut;
+            (creatorsCut, holdersCut) = _calculateCuts(
+                curBalance - processedRevenues
+            );
+            _revenuesErc20[tokenAddress].lifetimeEarnings += holdersCut / 10000;
+            _processedErc20Revenues[tokenAddress] = curBalance;
+            _creatorPayoutErc20(creatorsCut, tokenAddress);
+        }
+    }
+
+    /**
+     * @dev ERC20-token version of {_holderWithdraw}.
+     * @param account Holder's address.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function _holderWithdrawErc20(address account, address tokenAddress)
+        private
+    {
+        uint256 amount;
+        for (uint256 i; i < nft.balanceOf(account); ++i) {
+            amount += _processWithdrawalDataErc20(
+                nft.tokenOfOwnerByIndex(account, i),
+                tokenAddress
+            );
+        }
+        emit WithdrawErc20(account, amount, tokenAddress);
+        IERC20(tokenAddress).transfer(account, amount);
+    }
+
+    /**
+     * @dev ERC20-token version of {_creatorPayout}.
+     * @param amount Amount to send.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function _creatorPayoutErc20(uint256 amount, address tokenAddress) private {
+        IERC20(tokenAddress).transfer(_creator, amount);
+    }
+
+    /**
+     * @dev ERC20-token version of {_processWithdrawalData}.
+     * @param tokenId Id of the LDP token.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function _processWithdrawalDataErc20(uint256 tokenId, address tokenAddress)
+        private
+        returns (uint256 accruedRevenues)
+    {
+        accruedRevenues =
+            _revenuesErc20[tokenAddress].lifetimeEarnings -
+            _revenuesErc20[tokenAddress].lifetimeCollected[tokenId];
+        _revenuesErc20[tokenAddress].lifetimeCollected[
+            tokenId
+        ] = _revenuesErc20[tokenAddress].lifetimeEarnings;
+    }
+
+    // INTERNAL LOGICS - Common
+
+    /**
+     * @dev Calculate holders and creator revenues from the given amount.
+     */
+    function _calculateCuts(uint256 amount)
+        private
+        pure
+        returns (uint256 creatorsCut, uint256 holdersCut)
+    {
+        creatorsCut = amount / 16; // 6.25% to creator
+        holdersCut = amount - creatorsCut; // 93.75% to holders
+    }
 }
