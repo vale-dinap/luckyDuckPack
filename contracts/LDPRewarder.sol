@@ -24,8 +24,8 @@ import "./WethUnwrapper.sol";
  * they hold.
  *
  * Revenues are bound to tokens, not to holder addresses: in other words,
- * selling a token without claiming its revenues first will transfer the ability
- * to claim them to the buyer.
+ * selling/transfering an NFT without claiming its revenues first will also transfer
+ * the ability to claim them to the new owner.
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
  * are received in other tokens, a separate set of functions to manually
