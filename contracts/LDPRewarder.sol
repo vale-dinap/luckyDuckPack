@@ -8,7 +8,6 @@ import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
 // TODO: incentives code
-// TODO: withdraw single token earnings
 // TODO: final check
 
 /**
@@ -99,8 +98,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
 
     /**
      * @dev Earnings in Wrapped Ether (WETH) are automatically converted to ETH
-     * by the contract. This modifier prevents ERC20-related functions from
-     * operating with WETH.
+     * by the contract. This modifier prevents ERC20 functions from operating
+     * with WETH funds.
      */
     modifier noWeth(address tokenContract) {
         require(tokenContract != weth, "Not allowed with WETH");
@@ -126,7 +125,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         _creator = payable(newAddress);
     }
 
-    // RECEIVE CALLBACK //
+    // RECEIVE //
 
     /**
      * @dev When eth funds are received, this function:
@@ -151,11 +150,26 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
 
     /**
      * @notice Similar to {cashout} but works with any ERC20 token.
-     * @param tokenAddress Address of the ERC20 token contract.
+     * @param tokenAddress Address of the ERC20 token contract
      */
     function cashoutErc20(address tokenAddress) external noWeth(tokenAddress) {
         _updateErc20Revenues(tokenAddress);
         _holderCashout(msg.sender, tokenAddress);
+    }
+
+    /**
+     * @notice Cashout revenues accrued by a single NFT.
+     */
+    function nftCashout(uint256 tokenId) external nonReentrant {
+        _nftCashout(tokenId);
+    }
+
+    /**
+     * @notice Same as {nftCashout}, but working with any ERC20 token.
+     * @param tokenAddress Address of the ERC20 token contract
+     */
+    function nftCashoutErc20(uint256 tokenId, address tokenAddress) external {
+        _nftCashout(tokenId, tokenAddress);
     }
 
     /**
@@ -208,7 +222,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the revenues accrued by the specified token id.
+     * @notice Returns the revenues accrued by the token `tokenId`.
      */
     function nftRevenues(uint256 tokenId) external view returns (uint256) {
         return _getNftRevenues(_revenues, tokenId);
@@ -320,6 +334,29 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
                 nft.tokenOfOwnerByIndex(account, i)
             );
         }
+        emit WithdrawErc20(account, amount, tokenAddress);
+        IERC20(tokenAddress).transfer(account, amount);
+    }
+
+    /**
+     * @dev Send to the owner of `tokenId` all ETH revenues accrued
+     * by this token.
+     */
+    function _nftCashout(uint256 tokenId) private {
+        address account = nft.ownerOf(tokenId);
+        uint256 amount = _processWithdrawData(_revenues, tokenId);
+        emit WithdrawEth(account, amount);
+        payable(account).transfer(amount);
+    }
+
+    /**
+     * @dev Function overload that works with any ERC20-token.
+     * @param tokenId Id of the token to be used for cashout
+     * @param tokenAddress Address of the ERC20 token contract
+     */
+    function _nftCashout(uint256 tokenId, address tokenAddress) private {
+        address account = nft.ownerOf(tokenId);
+        uint256 amount = _processWithdrawData(_erc20Revenues[tokenAddress], tokenId);
         emit WithdrawErc20(account, amount, tokenAddress);
         IERC20(tokenAddress).transfer(account, amount);
     }

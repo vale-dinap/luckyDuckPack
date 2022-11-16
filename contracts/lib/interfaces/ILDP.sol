@@ -23,6 +23,10 @@ interface ILDP{
      */
     function balanceOf(address owner) view external returns(uint256);
     /**
+     * @dev Returns the address owner of `tokenId`.
+     */
+    function ownerOf(uint256 tokenId) view external returns(address);
+    /**
      * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
      */
     function tokenOfOwnerByIndex(address owner, uint256 index) view external returns (uint256);
