@@ -23,15 +23,12 @@ import "./lib/tools/WethUnwrapper.sol";
  * to the new owner the ability to do so.
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
- * are received in other tokens, a separate set of functions to manually
- * process/cashout any ERC20 token, callable by anyone, is provided.
+ * are received in other currencies, a separate set of functions to manually
+ * process/cashout any ERC20 token -callable by anyone- is provided.
  *
  * This contract is fair, unstoppable, unpausable, immutable: admin has only
  * permissions to amend the creator cashout address, but has no way to withdraw
  * the contract's liquidity nor access funds earned by NFT holders.
- *
- * In addition, all public/external functions involving transfers of funds (included
- * the admin/creator withdraws) rely on safer "transfer" calls and are non-reentrant.
  */
 contract LDPRewarder is Ownable, ReentrancyGuard {
     /**
@@ -54,7 +51,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
 
     // Creator address - only for cashout: creator has no special permissions
-    address payable private _creator;
+    address private _creator;
     // Lucky Ducks Pack NFT contract
     ILDP public nft;
     // WETH token address and WETH Unwrapper contract
@@ -67,11 +64,11 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * Initialize the WETH unwrapper contract.
      */
     constructor() {
-        _creator = payable(msg.sender);
+        _creator = msg.sender;
         wethUnwrapper = new WethUnwrapper(weth);
     }
 
-    // EVENTS //
+    // EVENTS AND ERRORS //
 
     /**
      * @dev Emitted when ETH is withdrawn.
@@ -85,6 +82,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         uint256 indexed amount,
         address indexed token
     );
+    /**
+     * @dev Raised on payout errors.
+     */
+    error CashoutError();
 
     /**
      * @dev Earnings in Wrapped Ether (WETH) are automatically converted to ETH
@@ -112,7 +113,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function setCreatorAddress(address newAddress) external onlyOwner {
         require(newAddress != address(0));
-        _creator = payable(newAddress);
+        _creator = newAddress;
     }
 
     // RECEIVE FUNCTION //
@@ -299,8 +300,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
                 nft.tokenOfOwnerByIndex(account, i)
             );
         }
-        emit Cashout(account, amount);
-        payable(account).transfer(amount);
+        _cashout({recipient: account, amount: amount});
     }
 
     /**
@@ -316,8 +316,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
                 nft.tokenOfOwnerByIndex(account, i)
             );
         }
-        emit CashoutErc20(account, amount, tokenAddress);
-        IERC20(tokenAddress).transfer(account, amount);
+        _cashout({token: tokenAddress, recipient: account, amount: amount});
     }
 
     /**
@@ -327,8 +326,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     function _nftCashout(uint256 tokenId) private {
         address account = nft.ownerOf(tokenId);
         uint256 amount = _processWithdrawData(_revenues, tokenId);
-        emit Cashout(account, amount);
-        payable(account).transfer(amount);
+        _cashout({recipient: account, amount: amount});
     }
 
     /**
@@ -339,8 +337,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     function _nftCashout(uint256 tokenId, address tokenAddress) private {
         address account = nft.ownerOf(tokenId);
         uint256 amount = _processWithdrawData(_erc20Revenues[tokenAddress], tokenId);
-        emit CashoutErc20(account, amount, tokenAddress);
-        IERC20(tokenAddress).transfer(account, amount);
+        _cashout({token: tokenAddress, recipient: account, amount: amount});
     }
 
     /**
@@ -348,8 +345,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _creatorCashout() private {
         uint256 earnings = _processWithdrawDataCreator(_revenues);
-        emit Cashout(_creator, earnings);
-        _creator.transfer(earnings);
+        _cashout({recipient: _creator, amount: earnings});
     }
 
     /**
@@ -360,8 +356,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         uint256 earnings = _processWithdrawDataCreator(
             _erc20Revenues[tokenAddress]
         );
-        emit CashoutErc20(_creator, earnings, tokenAddress);
-        IERC20(tokenAddress).transfer(_creator, earnings);
+        _cashout({token: tokenAddress, recipient: _creator, amount: earnings});
     }
 
     /**
@@ -452,6 +447,19 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @dev Returns the unclaimed revenues accrued by the given tokenId.
+     */
+    function _getNftRevenues(Revenues storage revenueRecords, uint256 tokenId)
+        private
+        view
+        returns (uint256)
+    {
+        return
+            revenueRecords.lifetimeEarnings -
+            revenueRecords.lifetimeCollected[tokenId];
+    }
+
+    /**
      * @dev Calculate holders and creator revenues from the given amount.
      */
     function _calculateCuts(uint256 amount)
@@ -464,15 +472,24 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the unclaimed revenues accrued by the given tokenId.
+     * @dev Private function used by cashout functions to transfer funds.
+     * @param recipient Destination to send funds to
+     * @param amount Amount to be sent
      */
-    function _getNftRevenues(Revenues storage revenueRecords, uint256 tokenId)
-        private
-        view
-        returns (uint256)
-    {
-        return
-            revenueRecords.lifetimeEarnings -
-            revenueRecords.lifetimeCollected[tokenId];
+    function _cashout(address recipient, uint256 amount) private{
+        (bool success, ) = recipient.call{value: amount}("");
+        if(!success) revert CashoutError();
+        emit Cashout(recipient, amount);
+    }
+
+    /**
+     * @dev ERC20-token version of {_cashout(address, uint256)}.
+     * @param token ERC20 token address
+     * @param recipient Destination to send funds to
+     * @param amount Amount to be sent
+     */
+    function _cashout(address token, address recipient, uint256 amount) private{
+        IERC20(token).transfer(recipient, amount);
+        emit CashoutErc20(recipient, amount, token);
     }
 }

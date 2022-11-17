@@ -6,8 +6,10 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./lib/interfaces/ILDP.sol";
 import "./lib/interfaces/ILDPMinterPayee.sol";
 
+// TODO: update and double-check minting payment logics
+
 /**
- * @dev Lucky Ducks Pack minter contract.
+ * @dev Lucky Ducks Pack Minter contract.
  */
 contract LDPMinter is Ownable, ReentrancyGuard{
 
@@ -21,6 +23,8 @@ contract LDPMinter is Ownable, ReentrancyGuard{
     ILDP public nft;
     // Instance of the minting payee contract
     ILDPMinterPayee public payee;
+
+    error MaxMintsPerCallExceeded(uint256 requested, uint256 max);
 
     /**
      * @notice Link the token contract instance to the nft contract address.
@@ -62,13 +66,13 @@ contract LDPMinter is Ownable, ReentrancyGuard{
         // Revert if minting hasn't started
         require(block.timestamp>mintingStartTime, "Minting not started");
         // Revert if attempting to mint more than 10 tokens at once
-        if(amount>10) revert("Attempted to mint more than 10");
+        if(amount>10) revert MaxMintsPerCallExceeded({requested: amount, max:10});
         // Revert if underpaying
         require(msg.value>=_currentPrice()*amount, "Price paid incorrect");
-        // Forward payment to payee address
-        payee.processPayment{value: msg.value}(amount);
         // Finally, mint tokens
         _mintBatch(amount);
+        // Forward payment to payee address
+        payee.processPayment{value: msg.value}(amount);
     }
 
     /**
