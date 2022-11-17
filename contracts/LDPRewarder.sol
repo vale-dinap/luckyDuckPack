@@ -20,18 +20,18 @@ import "./lib/tools/WethUnwrapper.sol";
  *
  * Revenues are bound to tokens, not to holder addresses: in other words,
  * selling/transfering an NFT without claiming its revenues first will also transfer
- * the ability to claim them to the new owner.
+ * to the new owner the ability to do so.
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
  * are received in other tokens, a separate set of functions to manually
- * process/cashout them is available and callable by anyone.
+ * process/cashout any ERC20 token, callable by anyone, is provided.
  *
- * This contract is fair, unstoppable, unpausable, mostly immutable: admin can only
- * amend the creator address, but has no way to access funds meant for NFT
- * holders nor change the contract's behaviour.
+ * This contract is fair, unstoppable, unpausable, immutable: admin has only
+ * permissions to amend the creator cashout address, but has no way to withdraw
+ * the contract's liquidity nor access funds earned by NFT holders.
  *
  * In addition, all public/external functions involving transfers of funds (included
- * the admin/creator withdraws) rely on "transfer" calls to prevent reentrancy attacks.
+ * the admin/creator withdraws) rely on safer "transfer" calls and are non-reentrant.
  */
 contract LDPRewarder is Ownable, ReentrancyGuard {
     /**
