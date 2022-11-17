@@ -53,7 +53,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // Track the processed ERC20 revenues to identify funds received since last update
     mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
 
-    // Creator address
+    // Creator address - only for cashout: creator has no special permissions
     address payable private _creator;
     // Lucky Ducks Pack NFT contract
     ILDP public nft;
@@ -63,7 +63,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
 
     /**
      * @dev Failsafe: set admin address as default beneficiary of
-     * creator earnings.
+     * creator earnings. Can amend it afterwards.
      * Initialize the WETH unwrapper contract.
      */
     constructor() {
@@ -89,7 +89,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     /**
      * @dev Earnings in Wrapped Ether (WETH) are automatically converted to ETH
      * by the contract. This modifier prevents ERC20 functions from operating
-     * with WETH funds.
+     * with WETH funds (as it might cause unwanted behaviours).
      */
     modifier noWeth(address tokenContract) {
         require(tokenContract != weth, "Not allowed with WETH");
