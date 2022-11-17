@@ -4,6 +4,7 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/DefaultOperatorFilterer.sol";
 
@@ -17,9 +18,10 @@ import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/D
 contract LDP is
     Ownable,
     ERC721("Lucky Ducks Pack", "LDP"),
+    ERC2981,
     DefaultOperatorFilterer,
     VRFConsumerBase
-    {
+{
     using Strings for uint256;
 
     // Supply cap
@@ -36,10 +38,13 @@ contract LDP is
     // Whether the reveal randomness has been requested to Chainlink
     bool private _revealRequested;
     /**
-     * @notice When all tokens are minted, a random offset is generated via VRF;
+     * @notice When all tokens are minted, a random offset is generated via VRF,
+     * so that:
+     *
      * [Revealed ID] = ([Token ID] + [Offset]) % [Max Supply].
-     * As the offset is globally applied to all token IDs and generated
-     * after all tokens have been minted, there is no way to snipe/cherrypick
+     *
+     * As the offset is applied to all token IDs (and generated only after
+     * all tokens have been minted), there is no way to snipe/cherrypick
      * tokens at minting time, therefore the distribution is truly hack-proof
      * as well as provably fair.
      */
@@ -61,6 +66,8 @@ contract LDP is
     {
         keyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311;
         fee = 2 * 10**18; // Goerli: 0.1 LINK, Ethereum Mainnet: 2 LINK
+
+        _setDefaultRoyalty(msg.sender, 800); //////////////////////////////////////////////// TODO: set rewarder contract here!
     }
 
     // EVENTS //
@@ -106,9 +113,9 @@ contract LDP is
                 ? string(abi.encodePacked(baseURI, (revealedId(id)).toString())) // return baseURI + revealedId,
                 : unrevealedURI; // otherwise return unrevealedURI.
     }
-    
+
     /**
-     * @dev Mint function callable only by minter contract.
+     * @dev Mint function, callable only by the minter contract.
      * @param account Address to mint the token to.
      */
     function mint(address account) external {
@@ -164,30 +171,56 @@ contract LDP is
         return REVEAL_OFFSET != 0;
     }
 
+    // CREATOR FEES INFO - ERC2981 //
+
+    /**
+     * @dev Override required for ERC2981 support
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC721, ERC2981)
+        returns (bool)
+    {
+        return
+            interfaceId == type(IERC2981).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     // CREATOR FEES ENFORCEMENT //
-    
+
     /**
      * @dev Override with {onlyAllowedOperator} modifier.
      */
-    function transferFrom(address from, address to, uint256 tokenId) public override onlyAllowedOperator(from) {
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public override onlyAllowedOperator(from) {
         super.transferFrom(from, to, tokenId);
     }
 
     /**
      * @dev Override with {onlyAllowedOperator} modifier.
      */
-    function safeTransferFrom(address from, address to, uint256 tokenId) public override onlyAllowedOperator(from) {
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public override onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId);
     }
 
     /**
      * @dev Override with {onlyAllowedOperator} modifier.
      */
-    function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory data)
-        public
-        override
-        onlyAllowedOperator(from)
-    {
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public override onlyAllowedOperator(from) {
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
@@ -196,7 +229,11 @@ contract LDP is
     /**
      * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
      */
-    function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256) {
+    function tokenOfOwnerByIndex(address owner, uint256 index)
+        public
+        view
+        returns (uint256)
+    {
         require(index < ERC721.balanceOf(owner), "Index out of bounds");
         return _ownedTokens[owner][index];
     }
@@ -211,7 +248,9 @@ contract LDP is
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, tokenId);
         if (from != to) {
-            if(from != address(0)){_removeFromEnumeration(from, tokenId);}
+            if (from != address(0)) {
+                _removeFromEnumeration(from, tokenId);
+            }
             _addToEnumeration(to, tokenId);
         }
     }

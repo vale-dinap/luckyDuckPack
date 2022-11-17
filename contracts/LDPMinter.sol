@@ -4,9 +4,6 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./lib/interfaces/ILDP.sol";
-import "./lib/interfaces/ILDPMinterPayee.sol";
-
-// TODO: update and double-check minting payment logics
 
 /**
  * @dev Lucky Ducks Pack Minter contract.
@@ -21,10 +18,13 @@ contract LDPMinter is Ownable, ReentrancyGuard{
     uint256 public mintingStartTime;
     // Instance of the token contract
     ILDP public nft;
-    // Instance of the minting payee contract
-    ILDPMinterPayee public payee;
+    // Creator
+    address private creator;
+    // LDP Rewarder contract address
+    address public rewarder;
 
     error MaxMintsPerCallExceeded(uint256 requested, uint256 max);
+    error PaymentError();
 
     /**
      * @notice Link the token contract instance to the nft contract address.
@@ -36,11 +36,20 @@ contract LDPMinter is Ownable, ReentrancyGuard{
     }
     
     /**
-     * @notice Link the payee contract instance to the payee contract address.
+     * @notice Set the payee address.
      */
-    function setPayeeAddress(address payeeAddr) external onlyOwner{
-        require(payeeAddr!=address(0));
-        payee = ILDPMinterPayee(payeeAddr);
+    function setCreatorAddress(address creatorAddr) external onlyOwner{
+        require(creatorAddr!=address(0), "Input is zero address");
+        creator = creatorAddr;
+    }
+
+    /**
+     * @notice Set the LDP Rewarder contract address. Locked after minting starts.
+     */
+    function setRewarderAddress(address rewarderAddr) external onlyOwner{
+        require(block.timestamp<mintingStartTime, "Access denied: minting started");
+        require(rewarderAddr!=address(0), "Input is zero address");
+        rewarder = rewarderAddr;
     }
 
     /**
@@ -52,7 +61,7 @@ contract LDPMinter is Ownable, ReentrancyGuard{
     function initializeMinting(uint256 startTime) external onlyOwner {
         if(mintingStartTime>0) revert("Already initialized");
         else{
-            require(startTime>block.timestamp, "Input startTime is in the past");
+            require(startTime>block.timestamp, "Requested time is in the past");
             mintingStartTime = startTime;
             _mintBatch(10);
         }
@@ -71,8 +80,8 @@ contract LDPMinter is Ownable, ReentrancyGuard{
         require(msg.value>=_currentPrice()*amount, "Price paid incorrect");
         // Finally, mint tokens
         _mintBatch(amount);
-        // Forward payment to payee address
-        payee.processPayment{value: msg.value}(amount);
+        // Send payment to creator and LDP Rewarder contract
+        _processPayment(msg.value, amount);
     }
 
     /**
@@ -106,5 +115,17 @@ contract LDPMinter is Ownable, ReentrancyGuard{
         for(uint256 i=0; i<amount; ++i){
             nft.mint(msg.sender);
         }
+    }
+
+    /**
+     * @dev Send payment to creator address and incentives to rewarder contract.
+     * @param payAmount Total amount of ether being paid
+     * @param purchaseAmount Amount of NFTs being purchased
+     */
+    function _processPayment(uint256 payAmount, uint256 purchaseAmount) private{
+        uint256 creatorEarnings = payAmount - (0.3 ether * purchaseAmount);
+        (bool creatorPaid, ) = creator.call{value: creatorEarnings}("");
+        (bool rewarderPaid, ) = rewarder.call{value: 0.3 ether}("");
+        if(!(creatorPaid && rewarderPaid)) revert PaymentError();
     }
 }
