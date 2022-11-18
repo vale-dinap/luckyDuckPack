@@ -43,10 +43,10 @@ contract LDP is
      *
      * [Revealed ID] = ([Token ID] + [Offset]) % [Max Supply].
      *
-     * As the offset is applied to all token IDs (and generated only after
-     * all tokens have been minted), there is no way to snipe/cherrypick
-     * tokens at minting time, therefore the distribution is truly hack-proof
-     * as well as provably fair.
+     * As the random offset is applied to all token IDs and generated only after
+     * all tokens have been already minted, there is no way to exploit the system
+     * to snipe/cherrypick tokens with a higher rarity score; in other words, the
+     * distribution is truly provably fair as well as hack-proof.
      */
     uint256 public REVEAL_OFFSET;
     address private constant VRFcoordinator =
