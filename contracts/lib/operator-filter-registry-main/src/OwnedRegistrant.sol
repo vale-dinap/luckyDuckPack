@@ -2,7 +2,7 @@
 pragma solidity ^0.8.13;
 
 import {IOperatorFilterRegistry} from "./IOperatorFilterRegistry.sol";
-import {Ownable2Step} from "openzeppelin-contracts/access/Ownable2Step.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 /**
  * @title  OwnedRegistrant

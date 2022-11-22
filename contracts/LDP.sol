@@ -9,18 +9,37 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/DefaultOperatorFilterer.sol";
 
 // TODO: test opensea code snippet
-// TODO: test chainlinkVRF, consider replacing with V2
-// TODO: update chainlinkVRF hardcoded variables (check values online 2 LINK on ethereum mainnet)
 // TODO: add ERC2981 fee data
-// TODO: add contract intro comment
-// TODO: replace ALL "REPLACE_ME" strings
+// TODO: replace ALL "REPLACE_ME" strings and double check all hardcoded values
 
+/**
+ * @dev Lucky Ducks Pack NFT contract
+ *
+ * The first NFT collection that pays sustainable, unstoppable, and 100%
+ * smart-contract-driven lifetime yield to holders!
+ *
+ * By owning one or more tokens, holders receive a proportional share of
+ * the creator fees from all trades; even if you never sell your own token,
+ * you will still earn a lifetime yield from all the others being traded!
+ *
+ * All creator fee revenues are automatically sent to a "rewarder" contract,
+ * which can be used by NFT holders to withdraw their share of dividends
+ * at any time.
+ *
+ * Who's the best, a bunch of apes or a pack of ten thousand lucky ducks? ;)
+ *
+ *
+ * About the code: the LDP smart-contracts have been written with the goal
+ * of not only being as functional, optimized and secure as possible, but
+ * also easily readable by anyone: even if you are not a programmer, why
+ * don't you have a look at the code by yourself? Don't trust, verify!
+ */
 contract LDP is
-    Ownable,
-    ERC721("Lucky Ducks Pack", "LDP"),
-    ERC2981,
-    DefaultOperatorFilterer,
-    VRFConsumerBase
+    Ownable,                            // Admin-only restrictions
+    ERC721("Lucky Ducks Pack", "LDP"),  // NFT token standard
+    ERC2981,                            // Royalty info standard
+    DefaultOperatorFilterer,            // Prevent trades on marketplaces not paying creator fees
+    VRFConsumerBase                     // Chainlink's random (for collection reveal)
 {
     using Strings for uint256;
 
@@ -31,15 +50,15 @@ contract LDP is
     // URIs - hardcoded for efficiency and transparency
     string private constant baseURI = "REPLACE_ME"; // TODO: consider NOT hardcoding baseUri to avoid project to be cloned
     string private constant unrevealedURI = "REPLACE_ME";
-    // Current total supply
+    // Keeps track of the total supply
     uint256 public totalSupply;
     // Minter contract address
     address public minterContract;
     // Whether the reveal randomness has been requested to Chainlink
     bool private _revealRequested;
     /**
-     * @notice When all tokens are minted, a random offset is generated via VRF,
-     * so that:
+     * @notice After all tokens have been minted, a random offset number is
+     * generated via VRF, so that:
      *
      * [Revealed ID] = ([Token ID] + [Offset]) % [Max Supply].
      *
@@ -49,10 +68,12 @@ contract LDP is
      * distribution is truly provably fair as well as hack-proof.
      */
     uint256 public REVEAL_OFFSET;
-    address private constant VRFcoordinator =
-        0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B;
-    bytes32 private keyHash; // Required by Chainlink VRF
-    uint256 private fee; // Required by Chainlink VRF
+
+    // Chainlink VRF (Verifiable Random Function) - fair collection reveal
+    address private constant VRFcoordinator = 0xf0d54349aDdcf704F77AE15b96510dEA15cb7952; // Contract
+    uint256 private constant fee = 2 * 10**18; // 2 LINK fee on Ethereum Mainnet
+    bytes32 private constant keyHash = 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445;
+    
     // Enumeration: Mapping from owner to list of owned token IDs
     mapping(address => mapping(uint256 => uint256)) private _ownedTokens;
     // Enumeration: Mapping from token ID to index of the owner tokens list
@@ -60,13 +81,10 @@ contract LDP is
 
     constructor()
         VRFConsumerBase(
-            VRFcoordinator, // VRF Coordinator
-            0x01BE23585060835E02B77ef475b0Cc51aA1e0709 // LINK Token
+            VRFcoordinator, // Chainlink VRF Coordinator
+            0x514910771AF9Ca656af840dff83E8264EcF986CA // LINK Token
         )
     {
-        keyHash = 0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311;
-        fee = 2 * 10**18; // Goerli: 0.1 LINK, Ethereum Mainnet: 2 LINK
-
         _setDefaultRoyalty(msg.sender, 800); //////////////////////////////////////////////// TODO: set rewarder contract here!
     }
 
@@ -88,7 +106,8 @@ contract LDP is
     // FUNCTIONS //
 
     /**
-     * @dev Set minter contract address. Immutable afterwards.
+     * @dev Set minter contract address. Can only be set once and becomes
+     * immutable afterwards.
      */
     function setMinter(address newAddress) external onlyOwner {
         require(minterContract == address(0), "Already set");
@@ -191,7 +210,7 @@ contract LDP is
     // CREATOR FEES ENFORCEMENT //
 
     /**
-     * @dev Override with {onlyAllowedOperator} modifier.
+     * @dev Override to add {onlyAllowedOperator} modifier.
      */
     function transferFrom(
         address from,
@@ -202,7 +221,7 @@ contract LDP is
     }
 
     /**
-     * @dev Override with {onlyAllowedOperator} modifier.
+     * @dev Override to add {onlyAllowedOperator} modifier.
      */
     function safeTransferFrom(
         address from,
@@ -213,7 +232,7 @@ contract LDP is
     }
 
     /**
-     * @dev Override with {onlyAllowedOperator} modifier.
+     * @dev Override to add {onlyAllowedOperator} modifier.
      */
     function safeTransferFrom(
         address from,

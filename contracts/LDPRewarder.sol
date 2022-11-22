@@ -8,9 +8,9 @@ import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
 /**
- * @dev Lucky Ducks Pack Rewarder contract
+ * @dev Lucky Ducks Pack Rewarder
  *
- * This contract's address is the NFT collection's creator fees receiver.
+ * This contract receives 100% of the creator fees from LDP trades.
  * When fees from a Lucky Ducks Pack token trade are received, token holders
  * are able to claim their share of revenues by calling {cashout}.
  *
@@ -181,9 +181,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the sum of all revenues accrued by the tokens owned by the given account.
-     * Use {isErc20RevenueRecordsUpToDate} to check if these records are up to date; if not,
-     * records can be updated by calling {forceUpdateTokenRevenueRecords}.
+     * @notice Returns the sum of all revenues accrued by the tokens owned by
+     * the given account; the function {isErc20RevenueRecordsUpToDate} can be
+     * used to check if these records are already up to date; if not, records
+     * can be updated by calling {forceUpdateTokenRevenueRecords}.
      */
     function accountRevenues(address account)
         external
