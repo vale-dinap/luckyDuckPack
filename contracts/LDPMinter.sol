@@ -9,7 +9,7 @@ import "./lib/interfaces/ILDP.sol";
  * @dev Lucky Ducks Pack Minter contract.
  */
 contract LDPMinter is Ownable, ReentrancyGuard {
-    // Pricing
+    // Pricing - hardcoded for transparency and efficiency
     uint256 private constant _price1 = 1.3 ether; // From 1 to 3333
     uint256 private constant _price2 = 1.8 ether; // From 3334 to 6666
     uint256 private constant _price3 = 2.3 ether; // From 6667 to 10000
@@ -22,7 +22,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Creator
     address private creator;
     // Total supply at last proceeds withdraw
-    uint256 private supplyAtLastWithdraw = 10; // Start at 10 due to team-reserved tokens
+    uint256 private supplyAtLastWithdraw = 12; // Start at 12 due to team-reserved tokens
 
     error MaxMintsPerCallExceeded(uint256 requested, uint256 max);
     error PaymentError(bool successA, bool successB);
@@ -57,9 +57,11 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set minting start time and reserve 10 tokens to admin's address.
+     * @notice Set minting start time and reserve 12 tokens to admin's address.
+     * These tokens will be mostly used for future community giveaways and rewards;
+     * only a few will be gifted to creators.
      * @dev This function cannot be called more than once, so admin won't be able to
-     * grab more than 10 free tokens (0.1% of the supply).
+     * mint more than 12 free tokens (0.12% of the supply).
      * @param startTime Minting start time (Unix timestamp)
      */
     function initializeMinting(uint256 startTime) external onlyOwner {
@@ -70,7 +72,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
                 "Requested time is in the past"
             );
             mintingStartTime = startTime;
-            _mintBatch(10);
+            _mintBatch(12);
         }
     }
 

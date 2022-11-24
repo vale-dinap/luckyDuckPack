@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/DefaultOperatorFilterer.sol";
 
-// TODO: test opensea code snippet
-// TODO: add ERC2981 fee data
 // TODO: replace ALL "REPLACE_ME" strings and double check all hardcoded values
 
 /**
@@ -39,7 +37,7 @@ contract LDP is
     ERC721("Lucky Ducks Pack", "LDP"),  // NFT token standard
     ERC2981,                            // Royalty info standard
     DefaultOperatorFilterer,            // Prevent trades on marketplaces not paying creator fees
-    VRFConsumerBase                     // Chainlink's random (for collection reveal)
+    VRFConsumerBase                     // Chainlink Random (for collection reveal)
 {
     using Strings for uint256;
 
@@ -48,8 +46,10 @@ contract LDP is
     // Final provenance hash - hardcoded for transparency
     string public constant PROVENANCE = "REPLACE_ME";
     // URIs - hardcoded for efficiency and transparency
-    string private constant baseURI = "REPLACE_ME"; // TODO: consider NOT hardcoding baseUri to avoid project to be cloned
-    string private constant unrevealedURI = "REPLACE_ME";
+    string private constant _unrevealedURI = "REPLACE_ME";
+    string private constant _contractURI = "REPLACE_ME";
+    // Base URI - to be set (by calling {initialize})
+    string private _baseURI;
     // Keeps track of the total supply
     uint256 public totalSupply;
     // Minter contract address
@@ -64,7 +64,7 @@ contract LDP is
      *
      * As the random offset is applied to all token IDs and generated only after
      * all tokens have been already minted, there is no way to exploit the system
-     * to snipe/cherrypick tokens with a higher rarity score; in other words, the
+     * and snipe/cherrypick tokens with a higher rarity score; in other words, the
      * distribution is truly provably fair as well as hack-proof.
      */
     uint256 public REVEAL_OFFSET;
@@ -84,9 +84,7 @@ contract LDP is
             VRFcoordinator, // Chainlink VRF Coordinator
             0x514910771AF9Ca656af840dff83E8264EcF986CA // LINK Token
         )
-    {
-        _setDefaultRoyalty(msg.sender, 800); //////////////////////////////////////////////// TODO: set rewarder contract here!
-    }
+    {}
 
     // EVENTS //
 
@@ -106,19 +104,34 @@ contract LDP is
     // FUNCTIONS //
 
     /**
-     * @dev Set minter contract address. Can only be set once and becomes
-     * immutable afterwards.
+     * @notice Store Minter contract address; set Rewarder contract address as
+     * royalty receiver; set the Base URI.
+     * This data becomes immutable afterwards as the function cannot be called
+     * more than once.
+     * This is also the only function restricted to the admin. In other words,
+     * after running this, admin keys can even be burnt as they become completely
+     * useless.
      */
-    function setMinter(address newAddress) external onlyOwner {
-        require(minterContract == address(0), "Already set");
-        minterContract = newAddress;
+    function initialize(
+        address minterAddress,
+        address rewarderAddress,
+        string calldata baseURI
+    ) external onlyOwner {
+        require(minterContract == address(0), "Already initialized");
+        require(minterAddress!=address(0), "Input Minter is zero address");
+        require(rewarderAddress!=address(0), "Input Rewarder is zero address");
+        require(bytes(baseURI).length!=0, "Input base URI is empty");
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK token for reveal");
+        minterContract = minterAddress;
+        _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
+        _baseURI = baseURI;
     }
 
     /**
-     * @notice Return the contract-level metadata URI.
+     * @notice Return the contract metadata URI.
      */
-    function contractURI() public pure returns (string memory) {
-        return "REPLACE_ME";
+    function contractURI() public view returns (string memory) {
+        return _contractURI;
     }
 
     /**
@@ -129,12 +142,12 @@ contract LDP is
         require(_exists(id), "ERC721: URI query for nonexistent token"); // Ensure that the token exists.
         return
             _isRevealed() // If revealed,
-                ? string(abi.encodePacked(baseURI, (revealedId(id)).toString())) // return baseURI + revealedId,
-                : unrevealedURI; // otherwise return unrevealedURI.
+                ? string(abi.encodePacked(_baseURI, (revealedId(id)).toString())) // return baseURI+revealedId,
+                : _unrevealedURI; // otherwise return the unrevealedURI.
     }
 
     /**
-     * @dev Mint function, callable only by the minter contract.
+     * @notice Mint function, callable only by the minter contract.
      * @param account Address to mint the token to.
      */
     function mint(address account) external {
@@ -171,7 +184,7 @@ contract LDP is
     }
 
     /**
-     * @dev Callback function used by VRF Coordinator.
+     * @notice Callback function used by Chainlink VRF.
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness)
         internal
@@ -184,7 +197,7 @@ contract LDP is
     }
 
     /**
-     * @dev Return True if the collection is revealed.
+     * @notice Return True if the collection is revealed.
      */
     function _isRevealed() private view returns (bool) {
         return REVEAL_OFFSET != 0;
