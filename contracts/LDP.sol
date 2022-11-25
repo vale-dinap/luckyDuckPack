@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
-import {DefaultOperatorFilterer} from "./lib/operator-filter-registry-main/src/DefaultOperatorFilterer.sol";
+import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
 // TODO: replace ALL "REPLACE_ME" strings and double check all hardcoded values
 
@@ -49,7 +49,18 @@ contract LDP is
     string private constant _unrevealedURI = "REPLACE_ME";
     string private constant _contractURI = "REPLACE_ME";
     // Base URI - to be set (by calling {initialize})
-    string private _baseURI;
+    string private _baseURI_IPFS;
+    string private _baseURI_AR;
+    /**
+     * @notice What if either IPFS or Arweave go down or become unreachable?
+     * Unlikely, of course! But really impossible?
+     * I might as well be just a paranoid dude.
+     * Yet, the off-chain data of this NFT collection is
+     * stored on both, just in case.
+     * When set to True, this variable causes the contract
+     * to fetch off-chain data from Arweave instead of IPFS.
+     */
+    bool public usingArweaveBackup;
     // Keeps track of the total supply
     uint256 public totalSupply;
     // Minter contract address
@@ -105,32 +116,33 @@ contract LDP is
 
     /**
      * @notice Store Minter contract address; set Rewarder contract address as
-     * royalty receiver; set the Base URI.
-     * This data becomes immutable afterwards as the function cannot be called
-     * more than once.
-     * This is also the only function restricted to the admin. In other words,
-     * after running this, admin keys can even be burnt as they become completely
-     * useless.
+     * royalty receiver; set the Base URI; finally, burn the admin keys.
+     * The data set by this function becomes immutable afterwards as calling it
+     * again would require admin permissions (burnt at the end of the first call).
+     * This contract has no other functions restricted to admin.
      */
     function initialize(
         address minterAddress,
         address rewarderAddress,
-        string calldata baseURI
+        string calldata baseURI_IPFS,
+        string calldata baseURI_AR
     ) external onlyOwner {
-        require(minterContract == address(0), "Already initialized");
         require(minterAddress!=address(0), "Input Minter is zero address");
         require(rewarderAddress!=address(0), "Input Rewarder is zero address");
-        require(bytes(baseURI).length!=0, "Input base URI is empty");
+        require(bytes(baseURI_IPFS).length!=0, "Input IPFS base URI is empty");
+        require(bytes(baseURI_AR).length!=0, "Input Arweave base URI is empty");
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK token for reveal");
         minterContract = minterAddress;
+        _baseURI_IPFS = baseURI_IPFS;
+        _baseURI_AR = baseURI_AR;
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
-        _baseURI = baseURI;
+        renounceOwnership();
     }
 
     /**
      * @notice Return the contract metadata URI.
      */
-    function contractURI() public view returns (string memory) {
+    function contractURI() public pure returns (string memory) {
         return _contractURI;
     }
 
@@ -142,7 +154,7 @@ contract LDP is
         require(_exists(id), "ERC721: URI query for nonexistent token"); // Ensure that the token exists.
         return
             _isRevealed() // If revealed,
-                ? string(abi.encodePacked(_baseURI, (revealedId(id)).toString())) // return baseURI+revealedId,
+                ? string(abi.encodePacked(_actualBaseURI(), (revealedId(id)).toString())) // return baseURI+revealedId,
                 : _unrevealedURI; // otherwise return the unrevealedURI.
     }
 
@@ -184,7 +196,19 @@ contract LDP is
     }
 
     /**
-     * @notice Callback function used by Chainlink VRF.
+     * @notice Toggle off-chain data fetch location (IPFS / Arweave).
+     * If both are reachable, calling this has basically no effect.
+     * This function is unlikely to be useful, ever. But better safe than
+     * sorry.
+     */
+    function toggleOffchainDataLocation() external {
+        usingArweaveBackup ?
+            usingArweaveBackup = false :
+            usingArweaveBackup = true;
+    }
+
+    /**
+     * @notice Callback function used by Chainlink VRF (collection reveal).
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness)
         internal
@@ -197,10 +221,18 @@ contract LDP is
     }
 
     /**
-     * @notice Return True if the collection is revealed.
+     * @dev Return True if the collection is revealed.
      */
     function _isRevealed() private view returns (bool) {
         return REVEAL_OFFSET != 0;
+    }
+
+    /**
+     * @dev Return either Arweave or IPFS baseURI depending on the
+     * value of "usingArweaveBackup".
+     */
+    function _actualBaseURI() private view returns (string memory) {
+        return usingArweaveBackup ? _baseURI_AR : _baseURI_IPFS;
     }
 
     // CREATOR FEES INFO - ERC2981 //
@@ -221,9 +253,33 @@ contract LDP is
     }
 
     // CREATOR FEES ENFORCEMENT //
+    // This section implements the Operator Filterer developed by Opensea (prevent
+    // token sales on marketplaces that don't honor creator fees).
+    
+    /**
+     * @dev Override to add {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
+     */
+    function setApprovalForAll(address operator, bool approved)
+        public
+        override
+        onlyAllowedOperatorApproval(operator)
+    {
+        super.setApprovalForAll(operator, approved);
+    }
 
     /**
-     * @dev Override to add {onlyAllowedOperator} modifier.
+     * @dev Override to add {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
+     */
+    function approve(address operator, uint256 tokenId)
+        public
+        override
+        onlyAllowedOperatorApproval(operator)
+    {
+        super.approve(operator, tokenId);
+    }
+
+    /**
+     * @dev Override to add {OperatorFilterer-onlyAllowedOperator} modifier.
      */
     function transferFrom(
         address from,
@@ -234,7 +290,7 @@ contract LDP is
     }
 
     /**
-     * @dev Override to add {onlyAllowedOperator} modifier.
+     * @dev Override to add {OperatorFilterer-onlyAllowedOperator} modifier.
      */
     function safeTransferFrom(
         address from,
@@ -245,7 +301,7 @@ contract LDP is
     }
 
     /**
-     * @dev Override to add {onlyAllowedOperator} modifier.
+     * @dev Override to add {OperatorFilterer-onlyAllowedOperator} modifier.
      */
     function safeTransferFrom(
         address from,
@@ -257,6 +313,8 @@ contract LDP is
     }
 
     // OWNED TOKENS ENUMERATION //
+    // This section contains functions that help retrieving all tokens owned by the
+    // same address, used by the Rewarder contract to cash out all token revenues at once.
 
     /**
      * @dev Returns a token ID owned by `owner` at a given `index` of its token list.

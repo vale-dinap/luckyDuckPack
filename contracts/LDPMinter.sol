@@ -5,8 +5,22 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./lib/interfaces/ILDP.sol";
 
+// TODO: add contract description comment
+
 /**
- * @dev Lucky Ducks Pack Minter contract.
+ * @dev Lucky Ducks Pack Minter
+ *
+ * This contract is responsible of the LDP collection minting process.
+ *
+ * I hope many will read this as I strongly believe that in a truly
+ * decentralized world we should always read a smart-contract by
+ * ourselves before interacting with it.
+ * To facilitate the process, I included as many comments as possible
+ * to guide you through each individual variable and function.
+ * That been said, the code is built with the purpose of being FAIR,
+ * SECURE, TRUSTWORTHY and EFFICIENT.
+ *
+ * 
  */
 contract LDPMinter is Ownable, ReentrancyGuard {
     // Pricing - hardcoded for transparency and efficiency
@@ -24,11 +38,12 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Total supply at last proceeds withdraw
     uint256 private supplyAtLastWithdraw = 12; // Start at 12 due to team-reserved tokens
 
+    // Errors
     error MaxMintsPerCallExceeded(uint256 requested, uint256 max);
     error PaymentError(bool successA, bool successB);
 
     /**
-     * @notice Link the token contract instance to the nft contract address.
+     * @notice Link the token contract to the nft contract address.
      * Can be set only once, then it becomes immutable.
      */
     function setNftAddress(address nftAddr) external onlyOwner {
