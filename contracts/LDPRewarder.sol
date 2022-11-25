@@ -490,7 +490,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @param amount Amount to be sent
      */
     function _cashout(address token, address recipient, uint256 amount) private{
-        IERC20(token).transfer(recipient, amount);
+        bool success = IERC20(token).transfer(recipient, amount);
+        if(!success) revert CashoutError();
         emit CashoutErc20(recipient, amount, token);
     }
 }
