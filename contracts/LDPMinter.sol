@@ -5,22 +5,32 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "./lib/interfaces/ILDP.sol";
 
-// TODO: add contract description comment
-
 /**
  * @dev Lucky Ducks Pack Minter
  *
  * This contract is responsible of the LDP collection minting process.
  *
- * I hope many will read this as I strongly believe that in a truly
- * decentralized world we should always read a smart-contract by
- * ourselves before interacting with it.
- * To facilitate the process, I included as many comments as possible
- * to guide you through each individual variable and function.
- * That been said, the code is built with the purpose of being FAIR,
- * SECURE, TRUSTWORTHY and EFFICIENT.
+ * In a truly decentralized and trustless world we should always check
+ * a smart-contract by ourselves before interacting with it, so please
+ * take a few moments to read this.
  *
- * 
+ * To facilitate the process, I included as many comments as possible
+ * that will guide you through every piece of code.
+ *
+ * Just like the other LuckyDucksPack smart-contracts, this aims to be
+ * 100% FAIR, SECURE, TRUSTWORTHY and EFFICIENT.
+ *
+ * That is achieved with features such as:
+ * -Admin has very limited powers and pretty strict limitations: most of the
+ *  contract data becomes immutable as soon as the minting event starts.
+ * -Minting start is time-based; once started, it cannot be stopped.
+ * -Prices are hardcoded to ensure transparency and lower gas fees.
+ * -Token distribution and reveal are fair and hack-proof
+    (by using Chainlink VRF - check the NFT contract for more info on this).
+ * -The mint function is as minimal as possible in order to reduce gas costs,
+ *  and doesn't even forward funds to creator (that has to withdraw manually).
+ * -Part of the payments is immediately ridistributed to token holders as
+ *  initial incentive/cashback; this is enforced by the smart-contract.
  */
 contract LDPMinter is Ownable, ReentrancyGuard {
     // Pricing - hardcoded for transparency and efficiency
@@ -52,7 +62,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set the payee address.
+     * @notice Set the creator address.
      */
     function setCreatorAddress(address creatorAddr) external onlyOwner {
         require(creatorAddr != address(0), "Input is zero address");
