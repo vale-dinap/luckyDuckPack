@@ -8,10 +8,10 @@ import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
 /**
- * @dev Lucky Ducks Pack Rewarder
+ * @dev Lucky Duck Pack Rewarder
  *
  * This contract receives 100% of the creator fees from LDP trades.
- * When fees from a Lucky Ducks Pack token trade are received, token holders
+ * When fees from a Lucky Duck Pack token trade are received, token holders
  * are able to claim their share of revenues by calling {cashout}.
  *
  * A small portion of the revenues (6.25%) is reserved to the collection creator,
@@ -47,12 +47,12 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     Revenues private _revenues;
     // ERC20 tokens revenues data
     mapping(address => Revenues) private _erc20Revenues; // Token address => Revenues
-    // Track the processed ERC20 revenues to identify funds received since last update
+    // Track the processed ERC20 revenues to identify funds received since last records update
     mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
 
     // Creator address - only for cashout: creator has no special permissions
     address private _creator;
-    // Lucky Ducks Pack NFT contract
+    // Lucky Duck Pack NFT contract
     ILDP public nft;
     // WETH token address and WETH Unwrapper contract
     address private constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
@@ -191,11 +191,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256 accruedRevenues)
     {
-        for (uint256 i; i < nft.balanceOf(account); ++i) {
-            accruedRevenues += _getNftRevenues(
-                _revenues,
-                nft.tokenOfOwnerByIndex(account, i)
-            );
+        for (uint256 i; i < nft.balanceOf(account); ) {
+            unchecked {
+                accruedRevenues += _getNftRevenues(
+                    _revenues,
+                    nft.tokenOfOwnerByIndex(account, i)
+                );
+                ++i;
+            }
         }
     }
 
@@ -211,11 +214,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     {
         if (tokenAddress == weth) return 0;
         else {
-            for (uint256 i; i < nft.balanceOf(account); ++i) {
-                accruedRevenues += _getNftRevenues(
-                    _erc20Revenues[tokenAddress],
-                    nft.tokenOfOwnerByIndex(account, i)
-                );
+            for (uint256 i; i < nft.balanceOf(account); ) {
+                unchecked {
+                    accruedRevenues += _getNftRevenues(
+                        _erc20Revenues[tokenAddress],
+                        nft.tokenOfOwnerByIndex(account, i)
+                    );
+                    ++i;
+                }
             }
         }
     }
@@ -282,7 +288,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _unwrapWethIfAny() private {
         uint256 bal = IWETH(weth).balanceOf(address(this));
-        if (bal > 0) {
+        if (bal != 0) {
             IWETH(weth).transfer(address(wethUnwrapper), bal);
             wethUnwrapper.unwrap(bal);
             wethUnwrapper.withdraw();
@@ -295,11 +301,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _accountCashout(address account) private {
         uint256 amount;
-        for (uint256 i; i < nft.balanceOf(account); ++i) {
-            amount += _processWithdrawData(
-                _revenues,
-                nft.tokenOfOwnerByIndex(account, i)
-            );
+        for (uint256 i; i < nft.balanceOf(account); ) {
+            unchecked {
+                amount += _processWithdrawData(
+                    _revenues,
+                    nft.tokenOfOwnerByIndex(account, i)
+                );
+                ++i;
+            }
         }
         _cashout({recipient: account, amount: amount});
     }
@@ -311,18 +320,21 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _accountCashout(address account, address tokenAddress) private {
         uint256 amount;
-        for (uint256 i; i < nft.balanceOf(account); ++i) {
-            amount += _processWithdrawData(
-                _erc20Revenues[tokenAddress],
-                nft.tokenOfOwnerByIndex(account, i)
-            );
+        for (uint256 i; i < nft.balanceOf(account); ) {
+            unchecked {
+                amount += _processWithdrawData(
+                    _erc20Revenues[tokenAddress],
+                    nft.tokenOfOwnerByIndex(account, i)
+                );
+                ++i;
+            }
         }
         _cashout({token: tokenAddress, recipient: account, amount: amount});
     }
 
     /**
-     * @dev Send to the owner of `tokenId` all ETH revenues accrued
-     * by this token.
+     * @dev Send all ETH revenues accrued by the token `tokenId` to its
+     * current owner.
      */
     function _nftCashout(uint256 tokenId) private {
         address account = nft.ownerOf(tokenId);
@@ -337,7 +349,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _nftCashout(uint256 tokenId, address tokenAddress) private {
         address account = nft.ownerOf(tokenId);
-        uint256 amount = _processWithdrawData(_erc20Revenues[tokenAddress], tokenId);
+        uint256 amount = _processWithdrawData(
+            _erc20Revenues[tokenAddress],
+            tokenId
+        );
         _cashout({token: tokenAddress, recipient: account, amount: amount});
     }
 
@@ -370,8 +385,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         uint256 creatorsCut;
         uint256 holdersCut;
         (creatorsCut, holdersCut) = _calculateCuts(newRevenues);
-        _revenues.lifetimeEarnings += (holdersCut / 10000);
-        _revenues.creatorLifetimeEarnings += creatorsCut;
+        unchecked {
+            _revenues.lifetimeEarnings += (holdersCut / 10000);
+            _revenues.creatorLifetimeEarnings += creatorsCut;
+        }
     }
 
     /**
@@ -388,8 +405,11 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         uint256 creatorsCut;
         uint256 holdersCut;
         (creatorsCut, holdersCut) = _calculateCuts(newRevenues);
-        _erc20Revenues[tokenAddress].lifetimeEarnings += holdersCut / 10000;
-        _erc20Revenues[tokenAddress].creatorLifetimeEarnings += creatorsCut;
+        unchecked {
+            _erc20Revenues[tokenAddress].lifetimeEarnings += (holdersCut /
+                10000);
+            _erc20Revenues[tokenAddress].creatorLifetimeEarnings += creatorsCut;
+        }
         _processedErc20Revenues[tokenAddress] = tokenBalance;
     }
 
@@ -406,11 +426,13 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         uint256 curBalance = IERC20(tokenAddress).balanceOf(address(this));
         uint256 processedRevenues = _processedErc20Revenues[tokenAddress];
         if (curBalance != processedRevenues) {
-            _updateRevenueRecords(
-                curBalance - processedRevenues,
-                tokenAddress,
-                curBalance
-            );
+            unchecked {
+                _updateRevenueRecords(
+                    curBalance - processedRevenues,
+                    tokenAddress,
+                    curBalance
+                );
+            }
         }
     }
 
@@ -424,11 +446,13 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         Revenues storage revenueRecords,
         uint256 tokenId
     ) private returns (uint256 accruedRevenues) {
-        accruedRevenues =
-            revenueRecords.lifetimeEarnings -
-            revenueRecords.lifetimeCollected[tokenId];
-        revenueRecords.lifetimeCollected[tokenId] = revenueRecords
-            .lifetimeEarnings;
+        uint256 lifetimeEarnings = revenueRecords.lifetimeEarnings;
+        unchecked {
+            accruedRevenues =
+                lifetimeEarnings -
+                revenueRecords.lifetimeCollected[tokenId];
+        }
+        revenueRecords.lifetimeCollected[tokenId] = lifetimeEarnings;
     }
 
     /**
@@ -440,11 +464,13 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         private
         returns (uint256 accruedRevenues)
     {
-        accruedRevenues =
-            revenueRecords.creatorLifetimeEarnings -
-            revenueRecords.creatorLifetimeCollected;
-        revenueRecords.creatorLifetimeCollected = revenueRecords
-            .lifetimeEarnings;
+        uint256 lifetimeEarnings = revenueRecords.creatorLifetimeEarnings;
+        unchecked {
+            accruedRevenues =
+                lifetimeEarnings -
+                revenueRecords.creatorLifetimeCollected;
+        }
+        revenueRecords.creatorLifetimeCollected = lifetimeEarnings;
     }
 
     /**
@@ -455,9 +481,11 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        return
-            revenueRecords.lifetimeEarnings -
-            revenueRecords.lifetimeCollected[tokenId];
+        unchecked {
+            return
+                revenueRecords.lifetimeEarnings -
+                revenueRecords.lifetimeCollected[tokenId];
+        }
     }
 
     /**
@@ -468,8 +496,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         pure
         returns (uint256 creatorsCut, uint256 holdersCut)
     {
-        creatorsCut = amount / 16; // 6.25% to creator
-        holdersCut = amount - creatorsCut; // 93.75% to holders
+        unchecked {
+            creatorsCut = amount / 16; // 6.25% to creator
+            holdersCut = amount - creatorsCut; // 93.75% to holders
+        }
     }
 
     /**
@@ -477,9 +507,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @param recipient Destination to send funds to
      * @param amount Amount to be sent
      */
-    function _cashout(address recipient, uint256 amount) private{
+    function _cashout(address recipient, uint256 amount) private {
         (bool success, ) = recipient.call{value: amount}("");
-        if(!success) revert CashoutError();
+        if (!success) revert CashoutError();
         emit Cashout(recipient, amount);
     }
 
@@ -489,9 +519,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @param recipient Destination to send funds to
      * @param amount Amount to be sent
      */
-    function _cashout(address token, address recipient, uint256 amount) private{
+    function _cashout(
+        address token,
+        address recipient,
+        uint256 amount
+    ) private {
         bool success = IERC20(token).transfer(recipient, amount);
-        if(!success) revert CashoutError();
+        if (!success) revert CashoutError();
+        unchecked{_processedErc20Revenues[token] -= amount;}
         emit CashoutErc20(recipient, amount, token);
     }
 }

@@ -9,12 +9,13 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
 // TODO: replace ALL "REPLACE_ME" strings and double check all hardcoded values
+// TODO: add commercial rights info
 
 /**
- * @dev Lucky Ducks Pack NFT contract
+ * @dev Lucky Duck Pack NFT contract
  *
  * The first NFT collection that pays sustainable, unstoppable, and 100%
- * smart-contract-driven lifetime yield to holders!
+ * smart-contract-powered lifetime yield to holders!
  *
  * By owning one or more tokens, holders receive a proportional share of
  * the creator fees from all trades; even if you never sell your own token,
@@ -28,15 +29,15 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
  *
  *
  * About the code: the LDP smart-contracts have been written with the goal
- * of not only being as functional, optimized and secure as possible, but
+ * of being not only as functional, optimized and secure as possible, but
  * also easily readable by anyone: even if you are not a programmer, why
  * don't you have a look at the code by yourself? Don't trust, verify!
  */
-contract LDP is
-    Ownable,                            // Admin-only restrictions
-    ERC721("Lucky Ducks Pack", "LDP"),  // NFT token standard
+contract LuckyDuckPack is
+    Ownable,                            // Admin role
+    ERC721("Lucky Duck Pack", "LDP"),   // NFT token standard
     ERC2981,                            // Royalty info standard
-    DefaultOperatorFilterer,            // Prevent trades on marketplaces not paying creator fees
+    DefaultOperatorFilterer,            // Prevent trades on marketplaces not honoring creator fees
     VRFConsumerBase                     // Chainlink Random (for collection reveal)
 {
     using Strings for uint256;
@@ -48,15 +49,16 @@ contract LDP is
     // URIs - hardcoded for efficiency and transparency
     string private constant _unrevealedURI = "REPLACE_ME";
     string private constant _contractURI = "REPLACE_ME";
-    // Base URI - to be set (by calling {initialize})
+    // Base URI - to be set before minting (by calling {initialize})
     string private _baseURI_IPFS;
     string private _baseURI_AR;
     /**
-     * @notice What if either IPFS or Arweave go down or become unreachable?
-     * Unlikely, of course! But really impossible?
-     * I might as well be just a paranoid dude.
-     * Yet, the off-chain data of this NFT collection is
-     * stored on both, just in case.
+     * @notice What if either IPFS or Arweave goes down or becomes
+     * corrupted/unreachable?
+     * Very unlikely, of course... But really impossible?
+     * I might as well be just a paranoid weirdo.
+     * Yet, I stored the off-chain data of this NFT collection
+     * on both, just in case.
      * When set to True, this variable causes the contract
      * to fetch off-chain data from Arweave instead of IPFS.
      */
@@ -97,7 +99,7 @@ contract LDP is
         )
     {}
 
-    // EVENTS //
+    // EVENTS AND ERRORS //
 
     /**
      * @dev Emitted when the random reveal offset is requested to Chainlink VRF Coordinator.
@@ -112,14 +114,20 @@ contract LDP is
         uint256 indexed randomNumber
     );
 
+    /**
+     * @dev Returned when a function reserved to the minter is called by a different address.
+     */
+    error CallerIsNoMinter();
+
     // FUNCTIONS //
 
     /**
-     * @notice Store Minter contract address; set Rewarder contract address as
+     * @notice This is the only function restricted to admin, and admin keys
+     * are burned by calling it. The function does the following:
+     * store Minter contract address; set Rewarder contract address as
      * royalty receiver; set the Base URI; finally, burn the admin keys.
-     * The data set by this function becomes immutable afterwards as calling it
-     * again would require admin permissions (burnt at the end of the first call).
-     * This contract has no other functions restricted to admin.
+     * The data set by this function becomes immutable as amending it
+     * would require admin permissions (keys burned with the first call).
      */
     function initialize(
         address minterAddress,
@@ -151,10 +159,10 @@ contract LDP is
      * @param id Token ID.
      */
     function tokenURI(uint256 id) public view override returns (string memory) {
-        require(_exists(id), "ERC721: URI query for nonexistent token"); // Ensure that the token exists.
+        require(_exists(id), "URI query for nonexistent token"); // Ensure that the token exists.
         return
             _isRevealed() // If revealed,
-                ? string(abi.encodePacked(_actualBaseURI(), (revealedId(id)).toString())) // return baseURI+revealedId,
+                ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
                 : _unrevealedURI; // otherwise return the unrevealedURI.
     }
 
@@ -163,11 +171,8 @@ contract LDP is
      * @param account Address to mint the token to.
      */
     function mint(address account) external {
-        require(
-            _msgSender() == minterContract,
-            "Caller is not the minter contract"
-        );
-        require(totalSupply < MAX_SUPPLY, "All minted");
+        if(_msgSender() != minterContract) revert CallerIsNoMinter();
+        require(totalSupply < MAX_SUPPLY, "No tokens left to be minted");
         uint256 nextId = totalSupply;
         totalSupply++;
         _safeMint(account, nextId);
@@ -214,9 +219,9 @@ contract LDP is
         internal
         override
     {
-        require(!_isRevealed(), "Already revealed"); // Cannot be called twice
-        REVEAL_OFFSET = randomness % MAX_SUPPLY; // Compute the final value
-        if (REVEAL_OFFSET == 0) REVEAL_OFFSET = 1; // Offset cannot be zero
+        require(!_isRevealed(), "Already revealed"); // Ensure it's not called twice
+        uint256 randomOffset = randomness % MAX_SUPPLY; // Compute the final value
+        REVEAL_OFFSET = randomOffset == 0 ? 1 : randomOffset; // Offset cannot be zero
         emit RevealFulfilled(requestId, REVEAL_OFFSET);
     }
 

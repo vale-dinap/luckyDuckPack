@@ -12,6 +12,9 @@ contract WethUnwrapper{
     // Creator's address - only Creator is allowed to interact
     address public creator;
 
+    // Error returned if caller is not the contract Creator
+    error CallerIsNotDeployer();
+
     /**
      * @dev Store Creator address and initialize WETH contract instance.
      */
@@ -24,7 +27,7 @@ contract WethUnwrapper{
      * @dev Ensures only Creator can interact.
      */
     modifier onlyCreator{
-        require(msg.sender==creator, "Caller is not deployer");
+        if(msg.sender!=creator) revert CallerIsNotDeployer();
         _;
     }
 
