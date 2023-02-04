@@ -7,28 +7,31 @@ import "@openzeppelin/contracts/token/erc20/IERC20.sol";
 import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
+// TODO: double-check erc20 mechanics (and look for optimizations)
+// TODO: event when revenues are received?
+
 /**
  * @dev Lucky Duck Pack Rewarder
  *
  * This contract receives 100% of the creator fees from LDP trades.
- * When fees from a Lucky Duck Pack token trade are received, token holders
- * are able to claim their share of revenues by calling {cashout}.
+ * Whenever funds are received, a portion of it is set aside for each LDP token;
+ * token owners can claim their earnings at any moment by calling {cashout}.
  *
- * A small portion of the revenues (6.25%) is reserved to the collection creator,
- * token holders earn the remaining 93.75%, proportionally to the amount of tokens
- * they hold.
+ * The contract reserves 6.25% of the earnings for the collection creator, with
+ * the remaining 93.75% going to token holders proportionally to the number of
+ * tokens they own.
  *
- * Revenues are bound to tokens, not to holder addresses: in other words,
- * selling/transfering an NFT without claiming its revenues first will also transfer
- * to the new owner the ability to do so.
+ * The earnings are tied to the tokens, not to the holder addresses, meaning that
+ * if an NFT is sold or transferred without claiming its earnings first, the new
+ * owner will have the right to do so.
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
  * are received in other currencies, a separate set of functions to manually
  * process/cashout any ERC20 token -callable by anyone- is provided.
  *
- * This contract is fair, unstoppable, unpausable, immutable: admin has only
- * permissions to amend the creator cashout address, but has no way to withdraw
- * the contract's liquidity nor access funds earned by NFT holders.
+ * This contract is fair, unstoppable, unpausable, immutable: the admin only has
+ * the authority to change the creator cashout address, but has no access to the
+ * contract's liquidity or funds earned by NFT holders.
  */
 contract LDPRewarder is Ownable, ReentrancyGuard {
     /**
@@ -86,14 +89,20 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @dev Raised on payout errors.
      */
     error CashoutError();
+    /**
+     * @dev Emitted by {noWeth} modifier when ERC20-reserved operations are
+     * attempted on WETH; check {noWeth} documentation for more info.
+     */
+    error NotAllowedOnWETH();
 
     /**
      * @dev Earnings in Wrapped Ether (WETH) are automatically converted to ETH
-     * by the contract. This modifier prevents ERC20 functions from operating
-     * with WETH funds (as it might cause unwanted behaviours).
+     * by the contract, so dividends in WETH don't have to be claimed separately;
+     * this modifier prevents ERC20 functions from operating with WETH (as doing
+     * so might cause unwanted behaviours).
      */
     modifier noWeth(address tokenContract) {
-        require(tokenContract != weth, "Not allowed with WETH");
+        if(tokenContract == weth) revert NotAllowedOnWETH();
         _;
     }
 
@@ -191,7 +200,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256 accruedRevenues)
     {
-        for (uint256 i; i < nft.balanceOf(account); ) {
+        uint256 numOwned = nft.balanceOf(account);
+        for (uint256 i; i < numOwned;) {
             unchecked {
                 accruedRevenues += _getNftRevenues(
                     _revenues,
@@ -214,7 +224,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     {
         if (tokenAddress == weth) return 0;
         else {
-            for (uint256 i; i < nft.balanceOf(account); ) {
+            uint256 numOwned = nft.balanceOf(account);
+            for (uint256 i; i < numOwned;) {
                 unchecked {
                     accruedRevenues += _getNftRevenues(
                         _erc20Revenues[tokenAddress],
@@ -301,7 +312,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _accountCashout(address account) private {
         uint256 amount;
-        for (uint256 i; i < nft.balanceOf(account); ) {
+        uint256 numOwned = nft.balanceOf(account);
+        for (uint256 i; i < numOwned;) {
             unchecked {
                 amount += _processWithdrawData(
                     _revenues,
@@ -320,7 +332,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _accountCashout(address account, address tokenAddress) private {
         uint256 amount;
-        for (uint256 i; i < nft.balanceOf(account); ) {
+        uint256 numOwned = nft.balanceOf(account);
+        for (uint256 i; i < numOwned;) {
             unchecked {
                 amount += _processWithdrawData(
                     _erc20Revenues[tokenAddress],
@@ -379,7 +392,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @dev Updates ETH revenue records. This function is embedded in
      * the receive() fallback, therefore automatically called whenever
      * new ETH is received.
-     * @param newRevenues Amount of ETH to be added to revenue records.
+     * @param newRevenues Amount of ETH to be added to the revenue records.
      */
     function _updateRevenueRecords(uint256 newRevenues) private {
         uint256 creatorsCut;

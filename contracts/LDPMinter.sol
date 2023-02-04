@@ -8,29 +8,34 @@ import "./lib/interfaces/ILDP.sol";
 /**
  * @dev Lucky Duck Pack Minter
  *
- * This contract is responsible of the LDP collection minting process.
+ * This contract manages the LDP collection minting process.
  *
- * In a truly decentralized and trustless world we should always check
- * a smart-contract by ourselves before interacting with it, so please
- * take a few moments to read this.
+ * We strongly recommend to thoroughly examine the code before
+ * interacting with it.
  *
- * To facilitate the process, I included as many comments as possible
- * that will guide you through every piece of code.
+ * To assist in the review process, ample comments have been included
+ * throughout the code.
  *
- * Just like the other LuckyDuckPack smart-contracts, this aims to be
- * 100% FAIR, SECURE, TRUSTWORTHY and EFFICIENT.
+ * Like all other LuckyDuckPack contracts, this one aims to be 100%
+ * fair, secure, trustworthy and efficient.
  *
- * That is achieved with features such as:
- * -Admin has very limited privileges and pretty strict limitations: most of the
- *  contract data becomes immutable as soon as the minting event starts.
- * -Minting start is time-based; once started, it cannot be stopped.
- * -Prices are hardcoded to ensure transparency and lower gas fees.
- * -Token distribution and reveal are fair and hack-proof
-    (by using Chainlink VRF - check the NFT contract for more info on this).
- * -The mint function is as minimal as possible in order to reduce gas costs,
- *  and doesn't even forward funds to creator (that has to withdraw manually).
- * -Part of the payments is immediately ridistributed to token holders as
- *  initial incentive/cashback (and this is enforced by the smart-contract).
+ * This is accomplished through features including:
+ * -The administrator's privileges are very limited and, once the
+ *  minting process begins, the majority of the contract data becomes
+ *  immutable.
+ * -The initiation of minting is determined by a set time, and once it
+ *  begins, it cannot be stopped.
+ * -Variables such as prices are hardcoded to ensure transparency and
+ *  lower gas fees.
+ * -Token distribution and reveal are ensured to be fair and secure from
+ *  hacking, thanks to the use of Chainlink VRF - Further information can
+ *  be found in the NFT contract.
+ * -The design of the mint function has been kept minimal to reduce its gas
+ *  costs: it doesn't even forward funds to the creator, who has to
+ *  manually withdraw them instead.
+ * -A portion of the payment is immediately distributed to token holders as
+ *  a starting incentive/cashback, with the smart contract enforcing the
+ *  distribution.
  */
 contract LDPMinter is Ownable, ReentrancyGuard {
     // Pricing - hardcoded for transparency and efficiency
@@ -46,10 +51,12 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Creator
     address private creator;
     // Total supply at last proceeds withdraw
-    uint256 private supplyAtLastWithdraw = 15; // Start at 15 due to team-reserved tokens
+    uint256 private supplyAtLastWithdraw = 20; // Start at 20 due to team-reserved tokens
 
-    // Errors
-    error MaxMintsPerCallExceeded(uint256 requested, uint256 max);
+    // Custom errors
+    error MaxMintsPerCallExceeded();
+    error PricePaidIncorrect();
+    error MintingNotStarted();
     error PaymentError(bool successA, bool successB);
 
     /**
@@ -82,11 +89,11 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set minting start time and reserve 12 tokens to admin's address.
-     * These tokens will be mostly used for future community giveaways and rewards;
-     * only a few will be gifted to creators.
-     * @dev This function cannot be called more than once, so admin won't be able to
-     * mint more than 15 free tokens (0.15% of the supply).
+     * @notice Set minting start time and reserve 20 tokens to admin's address.
+     * Half of these tokens will be used for giveaways, half will be gifted
+     * to the team.
+     * @dev This function can be called only once, so admin won't be able to
+     * mint more than 20 free tokens.
      * @param startTime Minting start time (Unix timestamp)
      */
     function initializeMinting(uint256 startTime) external onlyOwner {
@@ -97,7 +104,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
                 "Requested time is in the past"
             );
             mintingStartTime = startTime;
-            _mintBatch(15);
+            _mintBatch(20);
         }
     }
 
@@ -107,13 +114,14 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function mint(uint256 amount) external payable nonReentrant {
         // Revert if minting hasn't started
-        require(block.timestamp > mintingStartTime, "Minting not started");
+        if(block.timestamp < mintingStartTime) revert MintingNotStarted();
         // Revert if attempting to mint more than 10 tokens at once
-        if (amount > 10)
-            revert MaxMintsPerCallExceeded({requested: amount, max: 10});
+        if (amount > 10) revert MaxMintsPerCallExceeded();
         // Revert if underpaying
-        require(msg.value >= _currentPrice() * amount, "Price paid incorrect");
-        // Finally, mint tokens
+        unchecked{
+            if(msg.value < _currentPrice() * amount) revert PricePaidIncorrect();
+        }
+        // Finally, mint the tokens
         _mintBatch(amount);
     }
 
@@ -143,7 +151,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the current price (depends on the minted supply).
+     * @dev Returns the current price (depending on the remaining supply).
      */
     function _currentPrice() private view returns (uint256) {
         uint256 curSupply = nft.totalSupply();
@@ -156,7 +164,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Mint multiple tokens.
      */
     function _mintBatch(uint256 amount) private {
-        for (uint256 i = 0; i < amount;) {
+        for (uint256 i; i < amount;) {
             nft.mint(msg.sender);
             unchecked{++i;}
         }
@@ -164,20 +172,23 @@ contract LDPMinter is Ownable, ReentrancyGuard {
 
     /**
      * @dev Send proceeds to creator address and incentives to rewarder contract.
-     * @param tokensSold Amount of sales
+     * @param newTokensSold Number of new sales
      */
-    function _processWithdraw(uint256 tokensSold) private {
-        uint256 incentivesPerSale = 0.3 ether;
-        uint256 totalIncentives = incentivesPerSale * tokensSold;
-        if (totalIncentives < address(this).balance) {
-            uint256 creatorProceeds = address(this).balance - totalIncentives;
+    function _processWithdraw(uint256 newTokensSold) private {
+        uint256 incentivesPerSale = 0.25 ether;
+        uint256 totalIncentives = incentivesPerSale * newTokensSold;
+        uint256 _bal = address(this).balance;
+        if (totalIncentives < _bal) {
+            uint256 creatorProceeds = _bal - totalIncentives;
             (bool creatorPaid, ) = creator.call{value: creatorProceeds}("");
             (bool rewarderPaid, ) = rewarder.call{value: totalIncentives}("");
             if (!(creatorPaid && rewarderPaid))
                 revert PaymentError(creatorPaid, rewarderPaid);
         } else {
-            // Emergency measure, has no effect as long as the contract works as intended.
-            payable(creator).transfer(address(this).balance);
+            // Emergency measure to prevent funds from remaining stuck in the
+            // contract if something goes wrong: has no effect as long as the
+            // contract works as intended.
+            payable(creator).transfer(_bal);
         }
     }
 }

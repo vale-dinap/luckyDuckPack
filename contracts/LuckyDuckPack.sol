@@ -14,24 +14,25 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 /**
  * @dev Lucky Duck Pack NFT contract
  *
- * The first NFT collection that pays sustainable, unstoppable, and 100%
- * smart-contract-powered lifetime yield to holders!
+ * The first NFT collection that rewards holders with unstoppable,
+ * sustainable, and 100% smart-contract-powered lifetime returns!
  *
- * By owning one or more tokens, holders receive a proportional share of
- * the creator fees from all trades; even if you never sell your own token,
- * you will still earn a lifetime yield from all the others being traded!
+ * Owning one or more tokens grants holders a proportional share of the
+ * creator fees from all trades. This means that even without selling
+ * your own token, you can still receive lifetime yield from the trading
+ * of other tokens!
  *
- * All creator fee revenues are automatically sent to a "rewarder" contract,
- * which can be used by NFT holders to withdraw their share of dividends
- * at any time.
+ * The creator fee revenues are sent to a "rewarder" contract, which NFT
+ * holders can access at any time to withdraw their share of dividends.
  *
- * Who's the best, a bunch of apes or a pack of ten thousand lucky ducks? ;)
+ * Who will come out on top, a bunch of apes or a pack of ten thousand
+ * lucky ducks? ;)
  *
  *
- * About the code: the LDP smart-contracts have been written with the goal
- * of being not only as functional, optimized and secure as possible, but
- * also easily readable by anyone: even if you are not a programmer, why
- * don't you have a look at the code by yourself? Don't trust, verify!
+ * About the code: the LDP smart-contracts have been designed with the aim
+ * of being efficient, secure, transparent and accessible. Even if you
+ * don't have a programming background, take a look at the code for yourself.
+ * Don't trust, verify.
  */
 contract LuckyDuckPack is
     Ownable,                            // Admin role
@@ -53,14 +54,11 @@ contract LuckyDuckPack is
     string private _baseURI_IPFS;
     string private _baseURI_AR;
     /**
-     * @notice What if either IPFS or Arweave goes down or becomes
-     * corrupted/unreachable?
-     * Very unlikely, of course... But really impossible?
-     * I might as well be just a paranoid weirdo.
-     * Yet, I stored the off-chain data of this NFT collection
-     * on both, just in case.
-     * When set to True, this variable causes the contract
-     * to fetch off-chain data from Arweave instead of IPFS.
+     * @notice What if IPFS or Arweave experiences downtime or becomes
+     * inaccessible? Although it's highly unlikely, one can never be too sure.
+     * That's why I have stored the NFT collection's off-chain data on both
+     * platforms as a precaution. The variable, when set to True, directs
+     * the contract to retrieve the off-chain data from Arweave instead of IPFS.
      */
     bool public usingArweaveBackup;
     // Keeps track of the total supply
@@ -123,11 +121,11 @@ contract LuckyDuckPack is
 
     /**
      * @notice This is the only function restricted to admin, and admin keys
-     * are burned by calling it. The function does the following:
+     * are automatically burned at the end. The function does the following:
      * store Minter contract address; set Rewarder contract address as
      * royalty receiver; set the Base URI; finally, burn the admin keys.
-     * The data set by this function becomes immutable as amending it
-     * would require admin permissions (keys burned with the first call).
+     * As admin keys are burnt, all the data set by this function becomes
+     * immutable.
      */
     function initialize(
         address minterAddress,
@@ -144,7 +142,7 @@ contract LuckyDuckPack is
         _baseURI_IPFS = baseURI_IPFS;
         _baseURI_AR = baseURI_AR;
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
-        renounceOwnership();
+        renounceOwnership(); // Burn admin keys
     }
 
     /**
@@ -262,7 +260,7 @@ contract LuckyDuckPack is
     // token sales on marketplaces that don't honor creator fees).
     
     /**
-     * @dev Override to add {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
+     * @dev Adds {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
      */
     function setApprovalForAll(address operator, bool approved)
         public
@@ -273,7 +271,7 @@ contract LuckyDuckPack is
     }
 
     /**
-     * @dev Override to add {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
+     * @dev Adds {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
      */
     function approve(address operator, uint256 tokenId)
         public
@@ -284,7 +282,7 @@ contract LuckyDuckPack is
     }
 
     /**
-     * @dev Override to add {OperatorFilterer-onlyAllowedOperator} modifier.
+     * @dev Adds {OperatorFilterer-onlyAllowedOperator} modifier.
      */
     function transferFrom(
         address from,
@@ -295,7 +293,7 @@ contract LuckyDuckPack is
     }
 
     /**
-     * @dev Override to add {OperatorFilterer-onlyAllowedOperator} modifier.
+     * @dev Adds {OperatorFilterer-onlyAllowedOperator} modifier.
      */
     function safeTransferFrom(
         address from,
@@ -306,7 +304,7 @@ contract LuckyDuckPack is
     }
 
     /**
-     * @dev Override to add {OperatorFilterer-onlyAllowedOperator} modifier.
+     * @dev Adds {OperatorFilterer-onlyAllowedOperator} modifier.
      */
     function safeTransferFrom(
         address from,
