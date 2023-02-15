@@ -19,11 +19,11 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
  *
  * Owning one or more tokens grants holders a proportional share of the
  * creator fees from all trades. This means that even without selling
- * your own token, you can still receive lifetime yield from the trading
- * of other tokens!
+ * your own token, you can still receive lifetime earnings from the
+ * trading of other tokens!
  *
  * The creator fee revenues are sent to a "rewarder" contract, which NFT
- * holders can access at any time to withdraw their share of dividends.
+ * holders can access at any time to withdraw their share of earnings.
  *
  * Who will come out on top, a bunch of apes or a pack of ten thousand
  * lucky ducks? ;)
@@ -168,7 +168,7 @@ contract LuckyDuckPack is
      * @notice Mint function, callable only by the minter contract.
      * @param account Address to mint the token to.
      */
-    function mint(address account) external {
+    function mint_i5a(address account) external {
         if(_msgSender() != minterContract) revert CallerIsNoMinter();
         require(totalSupply < MAX_SUPPLY, "No tokens left to be minted");
         uint256 nextId = totalSupply;
@@ -323,7 +323,7 @@ contract LuckyDuckPack is
      * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
      */
     function tokenOfOwnerByIndex(address owner, uint256 index)
-        public
+        external
         view
         returns (uint256)
     {
@@ -342,9 +342,9 @@ contract LuckyDuckPack is
         super._beforeTokenTransfer(from, to, tokenId);
         if (from != to) {
             if (from != address(0)) {
-                _removeFromEnumeration(from, tokenId);
+                _removeFromEnumeration_bIF(from, tokenId);
             }
-            _addToEnumeration(to, tokenId);
+            _addToEnumeration_j9B(to, tokenId);
         }
     }
 
@@ -353,7 +353,7 @@ contract LuckyDuckPack is
      * @param to address representing the new owner of the given token ID
      * @param tokenId uint256 ID of the token to be added to the tokens list of the given address
      */
-    function _addToEnumeration(address to, uint256 tokenId) private {
+    function _addToEnumeration_j9B(address to, uint256 tokenId) private {
         uint256 length = ERC721.balanceOf(to);
         _ownedTokens[to][length] = tokenId;
         _ownedTokensIndex[tokenId] = length;
@@ -364,7 +364,7 @@ contract LuckyDuckPack is
      * @param from address representing the previous owner of the given token ID
      * @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
      */
-    function _removeFromEnumeration(address from, uint256 tokenId) private {
+    function _removeFromEnumeration_bIF(address from, uint256 tokenId) private {
         uint256 lastTokenIndex = ERC721.balanceOf(from) - 1;
         uint256 tokenIndex = _ownedTokensIndex[tokenId];
         if (tokenIndex != lastTokenIndex) {

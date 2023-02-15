@@ -34,14 +34,14 @@ contract WethUnwrapper{
     /**
      * @dev Calls WETH contract to unwrap WETH balance.
      */
-    function unwrap(uint256 amount) external onlyCreator {
+    function unwrap_aof(uint256 amount) external onlyCreator {
         WETH.withdraw(amount);
     }
 
     /**
      * @dev Allows to send ETH balance to Creator.
      */
-    function withdraw() external onlyCreator{
+    function withdraw_wdp() external onlyCreator{
         (bool success, ) = msg.sender.call{value: address(this).balance}("");
         require(success);
     }

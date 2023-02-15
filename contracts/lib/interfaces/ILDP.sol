@@ -9,7 +9,7 @@ interface ILDP{
      * @dev Mints a new token.
      * @param account Destination address.
      */
-    function mint(address account) external;
+    function mint_i5a(address account) external;
     /**
      * @dev Returns the current total supply.
      */

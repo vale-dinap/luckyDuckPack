@@ -104,7 +104,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
                 "Requested time is in the past"
             );
             mintingStartTime = startTime;
-            _mintBatch(20);
+            _mintBatch_K2B(20);
         }
     }
 
@@ -119,10 +119,10 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         if (amount > 10) revert MaxMintsPerCallExceeded();
         // Revert if underpaying
         unchecked{
-            if(msg.value < _currentPrice() * amount) revert PricePaidIncorrect();
+            if(msg.value < _currentPrice_t6y() * amount) revert PricePaidIncorrect();
         }
         // Finally, mint the tokens
-        _mintBatch(amount);
+        _mintBatch_K2B(amount);
     }
 
     /**
@@ -136,7 +136,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @notice Shows the current price.
      */
     function currentPrice() external view returns (uint256) {
-        return _currentPrice();
+        return _currentPrice_t6y();
     }
 
     /**
@@ -147,13 +147,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         uint256 currentSupply = nft.totalSupply();
         uint256 newSales = currentSupply - supplyAtLastWithdraw;
         supplyAtLastWithdraw = currentSupply;
-        _processWithdraw(newSales);
+        _processWithdraw_ama(newSales);
     }
 
     /**
      * @dev Returns the current price (depending on the remaining supply).
      */
-    function _currentPrice() private view returns (uint256) {
+    function _currentPrice_t6y() private view returns (uint256) {
         uint256 curSupply = nft.totalSupply();
         if (curSupply < 3334) return _price1;
         else if (curSupply < 6667) return _price2;
@@ -163,9 +163,9 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     /**
      * @dev Mint multiple tokens.
      */
-    function _mintBatch(uint256 amount) private {
+    function _mintBatch_K2B(uint256 amount) private {
         for (uint256 i; i < amount;) {
-            nft.mint(msg.sender);
+            nft.mint_i5a(msg.sender);
             unchecked{++i;}
         }
     }
@@ -174,7 +174,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Send proceeds to creator address and incentives to rewarder contract.
      * @param newTokensSold Number of new sales
      */
-    function _processWithdraw(uint256 newTokensSold) private {
+    function _processWithdraw_ama(uint256 newTokensSold) private {
         uint256 incentivesPerSale = 0.25 ether;
         uint256 totalIncentives = incentivesPerSale * newTokensSold;
         uint256 _bal = address(this).balance;
