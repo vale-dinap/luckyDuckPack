@@ -8,7 +8,6 @@ import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
 // TODO: double-check erc20 mechanics (and look for optimizations)
-// TODO: event when revenues are received?
 
 /**
  * @dev Lucky Duck Pack Rewarder
@@ -74,6 +73,18 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // EVENTS AND ERRORS //
 
     /**
+     * @dev Emitted when the contract receives ETH.
+     */
+    event ReceivedEth(uint256 indexed amount);
+    /**
+     * @dev Emitted when the unprocessed WETH is unwrapped.
+     */
+    event UnwrappedWeth();
+    /**
+     * @dev Emitted when ERC20 records are updated.
+     */
+    event ProcessedErc20(address indexed tokenAddress, uint256 indexed amount);
+    /**
      * @dev Emitted when ETH is withdrawn.
      */
     event Cashout(address indexed account, uint256 indexed amount);
@@ -106,36 +117,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         _;
     }
 
-    // ADMIN FUNCTIONS //
-
-    /**
-     * @notice Link the token contract instance to the nft contract address.
-     * Can be set only once and becomes immutable afterwards.
-     */
-    function setNftAddress(address nftAddr) external onlyOwner {
-        require(address(nft) == address(0), "Overriding denied");
-        nft = ILDP(nftAddr);
-    }
-
-    /**
-     * @notice Admin function to amend the creator address.
-     */
-    function setCreatorAddress(address newAddress) external onlyOwner {
-        require(newAddress != address(0));
-        _creator = newAddress;
-    }
-
     // RECEIVE FUNCTION //
 
     /**
-     * @dev When eth funds are received, this function:
-     * -updates the ETH revenue records;
-     * -unwraps any previously received WETH and adds
-     *  these unwrapped funds to the ETH revenue records.
+     * @dev Update the revenue records when ETH are received.
      */
     receive() external payable {
         _updateRevenueRecords_tku(msg.value);
-        _unwrapWethIfAny__um();
+        emit ReceivedEth(msg.value);
     }
 
     // USER FUNCTIONS //
@@ -187,6 +176,34 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         noWeth(tokenAddress)
     {
         _creatorCashout_gl3(tokenAddress);
+    }
+
+    /**
+     * @notice Unwraps all the unprocessed WETH received by the contract.
+     */
+    function unwrapWeth() external {
+        _unwrapWethIfAny__um();
+    }
+
+    /**
+     * @notice Force updating the revenue records of the provided ERC20 token:
+     * while ETH and WETH are automatically updated by {receive} (the latter as
+     * soon as it is unwrapped), this is not possible with ERC20 tokens, so a
+     * manual update must be triggered.
+     * @param tokenAddress Address of the ERC20 token contract.
+     */
+    function forceUpdateErc20RevenueRecords(address tokenAddress)
+        external
+        noWeth(tokenAddress)
+    {
+        _updateErc20Revenues_a8w(tokenAddress);
+    }
+
+    /**
+     * @notice Check if the contract has any WETH pending to be unwrapped.
+     */
+    function unprocessedWeth() external view returns (uint256) {
+        return IWETH(weth).balanceOf(address(this));
     }
 
     /**
@@ -276,19 +293,6 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Force updating the revenue records of the provided ERC20 token:
-     * while ETH and WETH are automatically updated by {receive}, this is not
-     * possible with ERC20 tokens, so a manual update might be required.
-     * @param tokenAddress Address of the ERC20 token contract.
-     */
-    function forceUpdateErc20RevenueRecords(address tokenAddress)
-        external
-        noWeth(tokenAddress)
-    {
-        _updateErc20Revenues_a8w(tokenAddress);
-    }
-
-    /**
      * @notice Return the lifetime earnings distributed to NFT holders (ETH).
      */
     function collectionEarningsLifetime() external view returns (uint256) {
@@ -306,6 +310,25 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         return _erc20Revenues[tokenContract].lifetimeEarnings*10000;
     }
 
+    // ADMIN FUNCTIONS //
+
+    /**
+     * @notice Link the token contract instance to the nft contract address.
+     * Can be set only once and becomes immutable afterwards.
+     */
+    function setNftAddress(address nftAddr) external onlyOwner {
+        require(address(nft) == address(0), "Overriding denied");
+        nft = ILDP(nftAddr);
+    }
+
+    /**
+     * @notice Admin function to amend the creator address.
+     */
+    function setCreatorAddress(address newAddress) external onlyOwner {
+        require(newAddress != address(0));
+        _creator = newAddress;
+    }
+
     // INTERNAL LOGICS
 
     /**
@@ -321,6 +344,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
             IWETH(weth).transfer(address(wethUnwrapper), bal);
             wethUnwrapper.unwrap_aof(bal);
             wethUnwrapper.withdraw_wdp();
+            emit UnwrappedWeth();
         }
     }
 
@@ -456,13 +480,15 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     function _updateErc20Revenues_a8w(address tokenAddress) private {
         uint256 curBalance = IERC20(tokenAddress).balanceOf(address(this));
         uint256 processedRevenues = _processedErc20Revenues[tokenAddress];
-        if (curBalance != processedRevenues) {
+        if (curBalance > processedRevenues) {
             unchecked {
+                uint256 _newRevenues = curBalance - processedRevenues;
                 _updateRevenueRecords_e20(
-                    curBalance - processedRevenues,
+                    _newRevenues,
                     tokenAddress,
                     curBalance
                 );
+                emit ProcessedErc20(tokenAddress, _newRevenues);
             }
         }
     }
