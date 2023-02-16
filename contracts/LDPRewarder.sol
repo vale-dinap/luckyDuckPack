@@ -3,7 +3,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/erc20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
@@ -148,19 +148,19 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
+     * @notice Cashout revenues accrued by the specified NFT.
+     */
+    function nftCashout(uint256 tokenId) external nonReentrant {
+        _nftCashout_M29(tokenId);
+    }
+
+    /**
      * @notice Similar to {cashout} but works with any ERC20 token.
      * @param tokenAddress Address of the ERC20 token contract
      */
     function cashoutErc20(address tokenAddress) external noWeth(tokenAddress) {
         _updateErc20Revenues_a8w(tokenAddress);
         _accountCashout_h8W(msg.sender, tokenAddress);
-    }
-
-    /**
-     * @notice Cashout revenues accrued by the specified NFT.
-     */
-    function nftCashout(uint256 tokenId) external nonReentrant {
-        _nftCashout_M29(tokenId);
     }
 
     /**

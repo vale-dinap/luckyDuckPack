@@ -60,6 +60,23 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     error PaymentError(bool successA, bool successB);
 
     /**
+     * @notice Mint (buy) tokens to the caller address.
+     * @param amount Number of tokens to be minted, max 10 per transaction.
+     */
+    function mint(uint256 amount) external payable nonReentrant {
+        // Revert if minting hasn't started
+        if(block.timestamp < mintingStartTime) revert MintingNotStarted();
+        // Revert if attempting to mint more than 10 tokens at once
+        if (amount > 10) revert MaxMintsPerCallExceeded();
+        // Revert if underpaying
+        unchecked{
+            if(msg.value < _currentPrice_t6y() * amount) revert PricePaidIncorrect();
+        }
+        // Finally, mint the tokens
+        _mintBatch_K2B(amount);
+    }
+
+    /**
      * @notice Link the token contract to the nft contract address.
      * Can be set only once, then it becomes immutable.
      */
@@ -106,23 +123,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
             mintingStartTime = startTime;
             _mintBatch_K2B(20);
         }
-    }
-
-    /**
-     * @notice Mint (buy) tokens to the caller address.
-     * @param amount Number of tokens to be minted, max 10 per transaction.
-     */
-    function mint(uint256 amount) external payable nonReentrant {
-        // Revert if minting hasn't started
-        if(block.timestamp < mintingStartTime) revert MintingNotStarted();
-        // Revert if attempting to mint more than 10 tokens at once
-        if (amount > 10) revert MaxMintsPerCallExceeded();
-        // Revert if underpaying
-        unchecked{
-            if(msg.value < _currentPrice_t6y() * amount) revert PricePaidIncorrect();
-        }
-        // Finally, mint the tokens
-        _mintBatch_K2B(amount);
     }
 
     /**

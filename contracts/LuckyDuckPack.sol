@@ -117,7 +117,24 @@ contract LuckyDuckPack is
      */
     error CallerIsNoMinter();
 
+    /**
+     * @dev Returned when one or more of the initializer function parameters are empty/zero.
+     */
+    error EmptyInput(uint256 index);
+
     // FUNCTIONS //
+
+    /**
+     * @notice Mint function, callable only by the minter contract.
+     * @param account Address to mint the token to.
+     */
+    function mint_i5a(address account) external {
+        if(_msgSender() != minterContract) revert CallerIsNoMinter();
+        require(totalSupply < MAX_SUPPLY, "No tokens left to be minted");
+        uint256 nextId = totalSupply;
+        totalSupply++;
+        _safeMint(account, nextId);
+    }
 
     /**
      * @notice This is the only function restricted to admin, and admin keys
@@ -133,16 +150,20 @@ contract LuckyDuckPack is
         string calldata baseURI_IPFS,
         string calldata baseURI_AR
     ) external onlyOwner {
-        require(minterAddress!=address(0), "Input Minter is zero address");
-        require(rewarderAddress!=address(0), "Input Rewarder is zero address");
-        require(bytes(baseURI_IPFS).length!=0, "Input IPFS base URI is empty");
-        require(bytes(baseURI_AR).length!=0, "Input Arweave base URI is empty");
+        // Input checks
+        if(minterAddress==address(0)) revert EmptyInput(0);
+        if(rewarderAddress==address(0)) revert EmptyInput(1);
+        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(2);
+        if(bytes(baseURI_AR).length==0) revert EmptyInput(3);
+        // Check if the contract has LINK tokens (required for collection reveal)
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK token for reveal");
+        // Store data
         minterContract = minterAddress;
         _baseURI_IPFS = baseURI_IPFS;
         _baseURI_AR = baseURI_AR;
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
-        renounceOwnership(); // Burn admin keys
+        // Burn admin keys
+        renounceOwnership();
     }
 
     /**
@@ -165,18 +186,6 @@ contract LuckyDuckPack is
     }
 
     /**
-     * @notice Mint function, callable only by the minter contract.
-     * @param account Address to mint the token to.
-     */
-    function mint_i5a(address account) external {
-        if(_msgSender() != minterContract) revert CallerIsNoMinter();
-        require(totalSupply < MAX_SUPPLY, "No tokens left to be minted");
-        uint256 nextId = totalSupply;
-        totalSupply++;
-        _safeMint(account, nextId);
-    }
-
-    /**
      * @notice Get the revealed ID.
      * @param id Token ID.
      */
@@ -187,7 +196,8 @@ contract LuckyDuckPack is
 
     /**
      * @notice Token reveal (request randomness - Chainlink VRF).
-     * This function can be called by anyone, but only after all tokens have been minted.
+     * This function can be called only once and by anyone, but only after
+     * all tokens have been minted.
      */
     function reveal() external returns (bytes32 requestId) {
         require(MAX_SUPPLY == totalSupply, "Called before minting completed");
