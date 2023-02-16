@@ -288,6 +288,24 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         _updateErc20Revenues_a8w(tokenAddress);
     }
 
+    /**
+     * @notice Return the lifetime earnings distributed to NFT holders (ETH).
+     */
+    function collectionEarningsLifetime() external view returns (uint256) {
+        return _revenues.lifetimeEarnings*10000;
+    }
+
+    /**
+     * @notice Return the lifetime earnings distributed to NFT holders (ERC20).
+     */
+    function collectionEarningsLifetime(address tokenContract)
+        external
+        view
+        returns (uint256)
+    {
+        return _erc20Revenues[tokenContract].lifetimeEarnings*10000;
+    }
+
     // INTERNAL LOGICS
 
     /**
