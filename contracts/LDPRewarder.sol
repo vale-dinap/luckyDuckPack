@@ -41,7 +41,6 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     struct Revenues {
         uint256 lifetimeEarnings; // Lifetime earnings of each NFT
         uint256 creatorLifetimeEarnings; // Lifetime earnings of the creator
-        uint256 creatorLifetimeCollected; // Lifetime earnings collected by creator
         mapping(uint256 => uint256) lifetimeCollected; // NFT ID => amount
     }
 
@@ -52,6 +51,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // Track the processed ERC20 revenues to identify funds received since last records update
     mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
 
+    // ID representing the creator within the mapping "lifetimeCollected"
+    uint256 private constant _creatorId = 31415926535;
     // Creator address - only for cashout: creator has no special permissions
     address private _creator;
     // Lucky Duck Pack NFT contract
@@ -61,8 +62,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     WethUnwrapper private immutable wethUnwrapper;
 
     /**
-     * @dev Failsafe: set admin address as default beneficiary of
-     * creator earnings. Can amend it afterwards.
+     * @dev Failsafe: set deployer as address receiving creator
+     * earnings. Can amend it afterwards.
      * Initialize the WETH unwrapper contract.
      */
     constructor() {
@@ -525,9 +526,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         unchecked {
             accruedRevenues =
                 lifetimeEarnings -
-                revenueRecords.creatorLifetimeCollected;
+                revenueRecords.lifetimeCollected[_creatorId];
         }
-        revenueRecords.creatorLifetimeCollected = lifetimeEarnings;
+        revenueRecords.lifetimeCollected[_creatorId] = lifetimeEarnings;
     }
 
     /**
