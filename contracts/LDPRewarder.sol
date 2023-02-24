@@ -7,8 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
-// TODO: double-check erc20 mechanics (and look for optimizations)
-
 /**
  * @dev Lucky Duck Pack Rewarder
  *
@@ -119,7 +117,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * unwanted behaviours).
      */
     modifier noWeth(address tokenContract) {
-        if(tokenContract == weth) revert NotAllowedOnWETH();
+        if (tokenContract == weth) revert NotAllowedOnWETH();
         _;
     }
 
@@ -220,7 +218,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         returns (uint256 accruedRevenues)
     {
         uint256 numOwned = nft.balanceOf(account);
-        for (uint256 i; i < numOwned;) {
+        for (uint256 i; i < numOwned; ) {
             unchecked {
                 accruedRevenues += _getNftRevenues_idw(
                     _revenues,
@@ -247,7 +245,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         if (tokenAddress == weth) return 0;
         else {
             uint256 numOwned = nft.balanceOf(account);
-            for (uint256 i; i < numOwned;) {
+            for (uint256 i; i < numOwned; ) {
                 unchecked {
                     accruedRevenues += _getNftRevenues_idw(
                         _erc20Revenues[tokenAddress],
@@ -301,7 +299,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @notice Return the lifetime earnings distributed to NFT holders (ETH).
      */
     function collectionEarningsLifetime() external view returns (uint256) {
-        return _revenues.lifetimeEarnings*10000;
+        return _revenues.lifetimeEarnings * 10000;
     }
 
     /**
@@ -312,7 +310,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        return _erc20Revenues[tokenContract].lifetimeEarnings*10000;
+        return _erc20Revenues[tokenContract].lifetimeEarnings * 10000;
     }
 
     // ADMIN FUNCTIONS //
@@ -360,7 +358,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     function _accountCashout_dHm(address account) private {
         uint256 amount;
         uint256 numOwned = nft.balanceOf(account);
-        for (uint256 i; i < numOwned;) {
+        for (uint256 i; i < numOwned; ) {
             unchecked {
                 amount += _processWithdrawData_Il8(
                     _revenues,
@@ -377,10 +375,12 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @param account Account address
      * @param tokenAddress Address of the ERC20 token contract
      */
-    function _accountCashout_h8W(address account, address tokenAddress) private {
+    function _accountCashout_h8W(address account, address tokenAddress)
+        private
+    {
         uint256 amount;
         uint256 numOwned = nft.balanceOf(account);
-        for (uint256 i; i < numOwned;) {
+        for (uint256 i; i < numOwned; ) {
             unchecked {
                 amount += _processWithdrawData_Il8(
                     _erc20Revenues[tokenAddress],
@@ -432,7 +432,11 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         uint256 earnings = _processWithdrawDataCreator_sFU(
             _erc20Revenues[tokenAddress]
         );
-        _cashout_KTv({token: tokenAddress, recipient: _creator, amount: earnings});
+        _cashout_KTv({
+            token: tokenAddress,
+            recipient: _creator,
+            amount: earnings
+        });
     }
 
     /**
@@ -521,7 +525,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         returns (uint256 accruedRevenues)
     {
         unchecked {
-            uint256 lifetimeEarningsCr = revenueRecords.lifetimeEarnings*10000/15;
+            uint256 lifetimeEarningsCr = (revenueRecords.lifetimeEarnings *
+                10000) / 15;
             accruedRevenues =
                 lifetimeEarningsCr -
                 revenueRecords.lifetimeCollected[_creatorId];
@@ -532,11 +537,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     /**
      * @dev Returns the unclaimed revenues accrued by the given tokenId.
      */
-    function _getNftRevenues_idw(Revenues storage revenueRecords, uint256 tokenId)
-        private
-        view
-        returns (uint256)
-    {
+    function _getNftRevenues_idw(
+        Revenues storage revenueRecords,
+        uint256 tokenId
+    ) private view returns (uint256) {
         unchecked {
             return
                 revenueRecords.lifetimeEarnings -
@@ -554,7 +558,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         returns (uint256 holderRevenues)
     {
         unchecked {
-            holderRevenues = amount * 15/16; // 15/16 == 93.75%
+            holderRevenues = (amount * 15) / 16; // 15/16 == 93.75%
         }
     }
 
@@ -582,7 +586,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     ) private {
         bool success = IERC20(token).transfer(recipient, amount);
         if (!success) revert CashoutError();
-        unchecked{_processedErc20Revenues[token] -= amount;}
+        unchecked {
+            _processedErc20Revenues[token] -= amount;
+        }
         emit CashoutErc20(recipient, amount, token);
     }
 }
