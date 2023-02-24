@@ -13,7 +13,7 @@ import "./lib/tools/WethUnwrapper.sol";
  * @dev Lucky Duck Pack Rewarder
  *
  * This contract receives 100% of the creator fees from LDP trades.
- * Whenever funds are received, a portion of it is set aside for each LDP token;
+ * Whenever funds are received, a portion is set aside for each LDP token;
  * token owners can claim their earnings at any moment by calling {cashout}.
  *
  * The contract reserves 6.25% of the earnings for the collection creator, with
@@ -40,8 +40,13 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     struct Revenues {
         uint256 lifetimeEarnings; // Lifetime earnings of each NFT
-        uint256 creatorLifetimeEarnings; // Lifetime earnings of the creator
         mapping(uint256 => uint256) lifetimeCollected; // NFT ID => amount
+        /** @dev: To reduce storage I/O (and therefore optimize gas costs) in favour
+            of token holders, only their records are stored, while creator info
+            require additional steps to be calculated:
+            Creator Lifetime Earnings == lifetimeEarnings*10000/15
+            Creator Lifetime Collected == lifetimeCollected[_creatorId]
+         */
     }
 
     // ETH revenues data
@@ -435,15 +440,12 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @dev Updates ETH revenue records. This function is embedded in
      * the receive() fallback, therefore automatically called whenever
      * new ETH is received.
-     * @param newRevenues Amount of ETH to be added to the revenue records.
+     * @param newRevenues Amount of ETH to be added to the revenue records
      */
     function _updateRevenueRecords_tku(uint256 newRevenues) private {
-        uint256 creatorsCut;
-        uint256 holdersCut;
-        (creatorsCut, holdersCut) = _calculateCuts_42r(newRevenues);
+        uint256 holdersCut = _calculateHolderRevenues_x8f(newRevenues);
         unchecked {
             _revenues.lifetimeEarnings += (holdersCut / 10000);
-            _revenues.creatorLifetimeEarnings += creatorsCut;
         }
     }
 
@@ -458,13 +460,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         address tokenAddress,
         uint256 tokenBalance
     ) private {
-        uint256 creatorsCut;
-        uint256 holdersCut;
-        (creatorsCut, holdersCut) = _calculateCuts_42r(newRevenues);
+        uint256 holdersCut = _calculateHolderRevenues_x8f(newRevenues);
         unchecked {
             _erc20Revenues[tokenAddress].lifetimeEarnings += (holdersCut /
                 10000);
-            _erc20Revenues[tokenAddress].creatorLifetimeEarnings += creatorsCut;
         }
         _processedErc20Revenues[tokenAddress] = tokenBalance;
     }
@@ -522,13 +521,13 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         private
         returns (uint256 accruedRevenues)
     {
-        uint256 lifetimeEarnings = revenueRecords.creatorLifetimeEarnings;
         unchecked {
+            uint256 lifetimeEarningsCr = revenueRecords.lifetimeEarnings*10000/15;
             accruedRevenues =
-                lifetimeEarnings -
+                lifetimeEarningsCr -
                 revenueRecords.lifetimeCollected[_creatorId];
+            revenueRecords.lifetimeCollected[_creatorId] = lifetimeEarningsCr;
         }
-        revenueRecords.lifetimeCollected[_creatorId] = lifetimeEarnings;
     }
 
     /**
@@ -547,16 +546,16 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Calculate holders and creator revenues from the given amount.
+     * @dev Calculate holder revenues from the given amount.
+     * 93.75% to holders, 6.25% to creator
      */
-    function _calculateCuts_42r(uint256 amount)
+    function _calculateHolderRevenues_x8f(uint256 amount)
         private
         pure
-        returns (uint256 creatorsCut, uint256 holdersCut)
+        returns (uint256 holderRevenues)
     {
         unchecked {
-            creatorsCut = amount / 16; // 6.25% to creator
-            holdersCut = amount - creatorsCut; // 93.75% to holders
+            holderRevenues = amount * 15/16; // 15/16 == 93.75%
         }
     }
 
