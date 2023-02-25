@@ -39,11 +39,12 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     struct Revenues {
         uint256 lifetimeEarnings; // Lifetime earnings of each NFT
         mapping(uint256 => uint256) lifetimeCollected; // NFT ID => amount
-        /** @dev: To reduce storage I/O (and therefore optimize gas costs) in favour
-            of token holders, only their records are stored, while creator earnings
-            are calculated at runtime:
-            Creator Lifetime Earnings == lifetimeEarnings*10000/15
-            Creator Lifetime Collected == lifetimeCollected[_creatorId]
+        /** 
+         * @dev: To reduce storage I/O (and therefore optimize gas costs) in favour
+         * of token holders, only their records are stored, while the creator
+         * earnings must be additionally calculated at runtime:
+         * Creator Lifetime Earnings == lifetimeEarnings*10000/15
+         * Creator Lifetime Collected == lifetimeCollected[_creatorId]
          */
     }
 
@@ -65,8 +66,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     WethUnwrapper private immutable wethUnwrapper;
 
     /**
-     * @dev Failsafe: set deployer as address receiving creator
-     * earnings. Can amend it afterwards.
+     * @dev Failsafe: set deployer as defult receiver of creator earnings
+     * (can be amended afterwards).
      * Initialize the WETH unwrapper contract.
      */
     constructor() {
