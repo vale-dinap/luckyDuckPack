@@ -41,7 +41,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         mapping(uint256 => uint256) lifetimeCollected; // NFT ID => amount
         /** @dev: To reduce storage I/O (and therefore optimize gas costs) in favour
             of token holders, only their records are stored, while creator earnings
-            requires to be calculated at runtime:
+            are calculated at runtime:
             Creator Lifetime Earnings == lifetimeEarnings*10000/15
             Creator Lifetime Collected == lifetimeCollected[_creatorId]
          */
