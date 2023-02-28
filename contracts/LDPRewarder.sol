@@ -112,10 +112,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     error NotAllowedOnWETH();
 
     /**
-     * @dev Earnings in Wrapped Ether (WETH) are automatically converted to ETH
-     * by the contract, so they don't have to be claimed separately; this modifier
-     * prevents ERC20 functions from operating with WETH (as doing so might cause
-     * unwanted behaviours).
+     * @dev Earnings in Wrapped Ether (WETH) are meant to be converted to ETH
+     * rather than claimed separately like the other ERC20: this modifier
+     * prevents ERC20-only functions from operating with WETH.
      */
     modifier noWeth(address tokenContract) {
         if (tokenContract == weth) revert NotAllowedOnWETH();
@@ -184,7 +183,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Unwraps all the unprocessed WETH received by the contract.
+     * @notice Unwraps all the WETH held by the contract.
      */
     function unwrapWeth() external {
         _unwrapWethIfAny__um();
