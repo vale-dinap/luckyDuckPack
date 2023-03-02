@@ -9,25 +9,28 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
 // TODO: replace ALL "REPLACE_ME" strings and double check all hardcoded values
-// TODO: add commercial rights info
 
 /**
  * @dev Lucky Duck Pack NFT contract
  *
- * The first NFT collection that rewards holders with unstoppable,
- * sustainable, and 100% smart-contract-powered lifetime returns!
+ * The world's first NFT art collection that offers unstoppable, sustainable, 
+ * and lifetime returns, all managed by smart-contracts!
  *
- * Owning one or more tokens grants holders a proportional share of the
- * creator fees from all trades. This means that even without selling
- * your own token, you can still receive lifetime earnings from the
- * trading of other tokens!
+ * Simply owning one or more tokens grants holders a proportional share
+ * of the creator fees from all trades. This means that even without
+ * selling your own token, you can still receive lifetime earnings from
+ * the trading of other tokens!
  *
- * The creator fee revenues are sent to a "rewarder" contract, which NFT
+ * The creator fee revenues are sent to a 'Rewarder' contract, which NFT
  * holders can access at any time to withdraw their share of earnings.
+ * No staking, nor other actions, are required: own your token, claim
+ * your earnings - it's THAT simple.
  *
- * Who will come out on top, a bunch of apes or a pack of ten thousand
- * lucky ducks? ;)
- *
+ * Commercial rights: As long as you own a Lucky Duck Pack NFT, you are
+ * granted an unlimited, worldwide, non-exclusive, royalty-free license to
+ * use, reproduce, and display the underlying artwork for commercial purposes,
+ * including creating and selling derivative work such as merchandise
+ * featuring the artwork.
  *
  * About the code: the LDP smart-contracts have been designed with the aim
  * of being efficient, secure, transparent and accessible. Even if you
@@ -138,11 +141,11 @@ contract LuckyDuckPack is
 
     /**
      * @notice This is the only function restricted to admin, and admin keys
-     * are automatically burned at the end. The function does the following:
+     * are automatically burned when called. The function does the following:
      * store Minter contract address; set Rewarder contract address as
      * royalty receiver; set the Base URI; finally, burn the admin keys.
      * As admin keys are burnt, all the data set by this function becomes
-     * immutable.
+     * effectively immutable.
      */
     function initialize(
         address minterAddress,
