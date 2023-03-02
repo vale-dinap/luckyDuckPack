@@ -16,8 +16,8 @@ import "./lib/interfaces/ILDP.sol";
  * To assist in the review process, ample comments have been included
  * throughout the code.
  *
- * Like all other LuckyDuckPack contracts, this one aims to be 100%
- * fair, secure, trustworthy and efficient.
+ * Like all other Lucky Duck Pack contracts, this aims to be 100% fair,
+ * secure, trustworthy and efficient.
  *
  * This is accomplished through features including:
  * -The administrator's privileges are very limited and, once the
@@ -42,6 +42,8 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     uint256 private constant _price1 = 1.3 ether; // From 1 to 3333
     uint256 private constant _price2 = 1.8 ether; // From 3334 to 6666
     uint256 private constant _price3 = 2.3 ether; // From 6667 to 10000
+    // Number of tokens reserved to the team
+    uint256 private constant _teamReserved = 20;
     // Minting start time (Unix timestamp)
     uint256 public mintingStartTime;
     // Instance of the token contract
@@ -50,14 +52,16 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     address public rewarder;
     // Creator
     address private creator;
-    // Total supply at last proceeds withdraw
-    uint256 private supplyAtLastWithdraw = 20; // Start at 20 due to team-reserved tokens
+    // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
+    uint256 private supplyAtLastWithdraw = _teamReserved; // Start at [_teamReserved] (as these won't be paid)
 
     // Custom errors
-    error MaxMintsPerCallExceeded();
-    error PricePaidIncorrect();
-    error MintingNotStarted();
-    error PaymentError(bool successA, bool successB);
+    error InputIsZero(); // When using address(0) as function parameter
+    error MintingNotStarted(); // Attempting to mint earlier than [mintingStartTime]
+    error MintingAlreadyStarted(); // Attempting to perform setup operations later than [mintingStartTime]
+    error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
+    error PricePaidIncorrect(); // Returned when underpaying
+    error PaymentError(bool successA, bool successB); // Transfer error
 
     /**
      * @notice Mint (buy) tokens to the caller address.
@@ -65,12 +69,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function mint(uint256 amount) external payable nonReentrant {
         // Revert if minting hasn't started
-        if(block.timestamp < mintingStartTime) revert MintingNotStarted();
+        if (block.timestamp < mintingStartTime) revert MintingNotStarted();
         // Revert if attempting to mint more than 10 tokens at once
         if (amount > 10) revert MaxMintsPerCallExceeded();
         // Revert if underpaying
-        unchecked{
-            if(msg.value < _currentPrice_t6y() * amount) revert PricePaidIncorrect();
+        unchecked {
+            if (msg.value < _currentPrice_t6y() * amount)
+                revert PricePaidIncorrect();
         }
         // Finally, mint the tokens
         _mintBatch_K2B(amount);
@@ -89,7 +94,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @notice Set the creator address.
      */
     function setCreatorAddress(address creatorAddr) external onlyOwner {
-        require(creatorAddr != address(0), "Input is zero address");
+        if (creatorAddr == address(0)) revert InputIsZero();
         creator = creatorAddr;
     }
 
@@ -97,20 +102,21 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @notice Set the LDP Rewarder contract address. Locked after minting starts.
      */
     function setRewarderAddress(address rewarderAddr) external onlyOwner {
-        require(
-            block.timestamp < mintingStartTime,
-            "Access denied: minting started"
-        );
-        require(rewarderAddr != address(0), "Input is zero address");
+        uint256 _startTime = mintingStartTime;
+        if (_startTime != 0) {
+            if (block.timestamp > _startTime) revert MintingAlreadyStarted();
+        }
+        if (rewarderAddr == address(0)) revert InputIsZero();
         rewarder = rewarderAddr;
     }
 
     /**
-     * @notice Set minting start time and reserve 20 tokens to admin's address.
-     * Half of these tokens will be used for giveaways, half will be gifted
-     * to the team.
+     * @notice Set minting start time and reserve [_teamReserved] tokens to
+     * admin's address.
+     * Some of these tokens will be used for giveaways, the rest will be
+     * gifted to the team.
      * @dev This function can be called only once, so admin won't be able to
-     * mint more than 20 free tokens.
+     * mint more than [_teamReserved] free tokens.
      * @param startTime Minting start time (Unix timestamp)
      */
     function initializeMinting(uint256 startTime) external onlyOwner {
@@ -121,7 +127,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
                 "Requested time is in the past"
             );
             mintingStartTime = startTime;
-            _mintBatch_K2B(20);
+            _mintBatch_K2B(_teamReserved);
         }
     }
 
@@ -141,13 +147,45 @@ contract LDPMinter is Ownable, ReentrancyGuard {
 
     /**
      * @notice Send proceeds to creator address and incentives to Rewarder contract.
+     * @dev Reverts if the transfers fail.
      */
     function withdrawProceeds() external {
         require(mintingStartTime != 0, "Called before initializeMinting");
+        if (_msgSender() != owner())
+            require(_msgSender() == creator, "Caller is not admin nor creator");
         uint256 currentSupply = nft.totalSupply();
         uint256 newSales = currentSupply - supplyAtLastWithdraw;
+        supplyAtLastWithdraw = currentSupply; // Storage variable update
+        // Actual withdraw
+        (bool creatorPaid, bool rewarderPaid) = _processWithdraw_ama(newSales);
+        // Revert if one or both payments failed
+        if (!(creatorPaid && rewarderPaid))
+            revert PaymentError(creatorPaid, rewarderPaid);
+    }
+
+    /**
+     * @notice Emergency function to recover funds that may be trapped in the contract
+     * in the event of unforeseen circumstances preventing {withdrawProceeds} from
+     * functioning as intended. This function is subject to strict limitations:
+     * it cannot be utilized prior to the completion of the minting process, it
+     * initially attempts a regular withdrawal (to prevent potential exploitation by
+     * the admin), and only in case that fails, it sends any remaining funds to the
+     * admin's address. The admin will then be responsible for distributing the
+     * proceeds manually.
+     */
+    function emergencyWithdraw() external onlyOwner {
+        // Revert if the function is called before the minting process ends
+        uint256 currentSupply = nft.totalSupply();
+        require(nft.totalSupply() == nft.MAX_SUPPLY(), "Minting in progress");
+        // Attempt the normal withdraw first: if succeeds, emergency actions won't be performed
+        uint256 newSales = currentSupply - supplyAtLastWithdraw;
         supplyAtLastWithdraw = currentSupply;
-        _processWithdraw_ama(newSales);
+        (bool creatorPaid, bool rewarderPaid) = _processWithdraw_ama(newSales);
+        // If one of the two payments failed, send the remaining balance to admin
+        if (!(creatorPaid && rewarderPaid)) {
+            uint256 _bal = address(this).balance;
+            payable(_msgSender()).transfer(_bal);
+        }
     }
 
     /**
@@ -164,9 +202,9 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Mint multiple tokens.
      */
     function _mintBatch_K2B(uint256 amount) private {
-        for (uint256 i; i < amount;) {
+        for (uint256 i; i < amount; ) {
             nft.mint_i5a(msg.sender);
-            unchecked{++i;}
+            unchecked {++i;}
         }
     }
 
@@ -174,21 +212,17 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Send proceeds to creator address and incentives to rewarder contract.
      * @param newTokensSold Number of new sales
      */
-    function _processWithdraw_ama(uint256 newTokensSold) private {
+    function _processWithdraw_ama(uint256 newTokensSold)
+        private
+        returns (bool creatorPaid, bool rewarderPaid)
+    {
         uint256 incentivesPerSale = 0.25 ether;
         uint256 totalIncentives = incentivesPerSale * newTokensSold;
         uint256 _bal = address(this).balance;
         if (totalIncentives < _bal) {
             uint256 creatorProceeds = _bal - totalIncentives;
-            (bool creatorPaid, ) = creator.call{value: creatorProceeds}("");
-            (bool rewarderPaid, ) = rewarder.call{value: totalIncentives}("");
-            if (!(creatorPaid && rewarderPaid))
-                revert PaymentError(creatorPaid, rewarderPaid);
-        } else {
-            // Emergency measure to prevent funds from remaining stuck in the
-            // contract if something goes wrong: has no effect as long as the
-            // contract works as intended.
-            payable(creator).transfer(_bal);
+            (rewarderPaid, ) = rewarder.call{value: totalIncentives}("");
+            (creatorPaid, ) = creator.call{value: creatorProceeds}("");
         }
     }
 }
