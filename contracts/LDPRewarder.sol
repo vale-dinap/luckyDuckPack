@@ -75,7 +75,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         wethUnwrapper = new WethUnwrapper(weth);
     }
 
-    // EVENTS AND ERRORS //
+    // =============================================================
+    //                      EVENTS AND ERRORS
+    // =============================================================
 
     /**
      * @dev Emitted when the contract receives ETH.
@@ -121,7 +123,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         _;
     }
 
-    // RECEIVE FUNCTION //
+    // =============================================================
+    //                       RECEIVE FUNCTION
+    // =============================================================
 
     /**
      * @dev Update the revenue records when ETH are received.
@@ -131,7 +135,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         emit ReceivedEth(msg.value);
     }
 
-    // USER FUNCTIONS //
+    // =============================================================
+    //                       USER FUNCTIONS
+    // =============================================================
 
     /**
      * @notice Cashout the revenues accrued by all owned NFTs.
@@ -313,7 +319,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         return _erc20Revenues[tokenContract].lifetimeEarnings * 10000;
     }
 
-    // ADMIN FUNCTIONS //
+    // =============================================================
+    //                       ADMIN FUNCTIONS
+    // =============================================================
 
     /**
      * @notice Link the token contract instance to the nft contract address.
@@ -332,7 +340,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         _creator = newAddress;
     }
 
-    // INTERNAL LOGICS
+    // =============================================================
+    //                      INTERNAL LOGICS
+    // =============================================================
 
     /**
      * @dev If this smart-contract holds any WETH, unwrap it.
@@ -592,3 +602,5 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         emit CashoutErc20(recipient, amount, token);
     }
 }
+
+// :)

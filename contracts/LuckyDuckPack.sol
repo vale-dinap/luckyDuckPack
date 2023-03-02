@@ -100,7 +100,9 @@ contract LuckyDuckPack is
         )
     {}
 
-    // EVENTS AND ERRORS //
+    // =============================================================
+    //                      EVENTS AND ERRORS
+    // =============================================================
 
     /**
      * @dev Emitted when the random reveal offset is requested to Chainlink VRF Coordinator.
@@ -125,7 +127,9 @@ contract LuckyDuckPack is
      */
     error EmptyInput(uint256 index);
 
-    // FUNCTIONS //
+    // =============================================================
+    //                           FUNCTIONS
+    // =============================================================
 
     /**
      * @notice Mint function, callable only by the minter contract.
@@ -251,7 +255,9 @@ contract LuckyDuckPack is
         return usingArweaveBackup ? _baseURI_AR : _baseURI_IPFS;
     }
 
-    // CREATOR FEES INFO - ERC2981 //
+    // =============================================================
+    //                  ERC2981 (CREATOR FEES INFO)
+    // =============================================================
 
     /**
      * @dev Override required for ERC2981 support
@@ -268,7 +274,10 @@ contract LuckyDuckPack is
             super.supportsInterface(interfaceId);
     }
 
-    // CREATOR FEES ENFORCEMENT //
+    // =============================================================
+    //                   CREATOR FEES ENFORCEMENT
+    // =============================================================
+
     // This section implements the Operator Filterer developed by Opensea (prevent
     // token sales on marketplaces that don't honor creator fees).
     
@@ -328,7 +337,10 @@ contract LuckyDuckPack is
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
-    // OWNED TOKENS ENUMERATION //
+    // =============================================================
+    //                 TOKEN OWNERSHIP ENUMERATION
+    // =============================================================
+
     // This section contains functions that help retrieving all tokens owned by the
     // same address, used by the Rewarder contract to cash out all token revenues at once.
 
@@ -389,3 +401,5 @@ contract LuckyDuckPack is
         delete _ownedTokens[from][lastTokenIndex];
     }
 }
+
+// :)

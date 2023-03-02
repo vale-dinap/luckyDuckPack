@@ -55,13 +55,22 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
     uint256 private supplyAtLastWithdraw = _teamReserved; // Start at [_teamReserved] (as these won't be paid)
 
-    // Custom errors
+
+    // =============================================================
+    //                        CUSTOM ERRORS
+    // =============================================================
+
     error InputIsZero(); // When using address(0) as function parameter
     error MintingNotStarted(); // Attempting to mint earlier than [mintingStartTime]
     error MintingAlreadyStarted(); // Attempting to perform setup operations later than [mintingStartTime]
     error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
     error PricePaidIncorrect(); // Returned when underpaying
     error PaymentError(bool successA, bool successB); // Transfer error
+
+
+    // =============================================================
+    //                         FUNCTIONS
+    // =============================================================
 
     /**
      * @notice Mint (buy) tokens to the caller address.
@@ -188,6 +197,11 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         }
     }
 
+
+    // =============================================================
+    //                      PRIVATE FUNCTIONS
+    // =============================================================
+
     /**
      * @dev Returns the current price (depending on the remaining supply).
      */
@@ -226,3 +240,5 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         }
     }
 }
+
+// :)
