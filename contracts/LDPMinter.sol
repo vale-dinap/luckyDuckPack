@@ -55,7 +55,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
     uint256 private supplyAtLastWithdraw = _teamReserved; // Start at [_teamReserved] (as these won't be paid)
 
-
     // =============================================================
     //                        CUSTOM ERRORS
     // =============================================================
@@ -66,7 +65,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
     error PricePaidIncorrect(); // Returned when underpaying
     error PaymentError(bool successA, bool successB); // Transfer error
-
 
     // =============================================================
     //                         FUNCTIONS
@@ -196,7 +194,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
             payable(_msgSender()).transfer(_bal);
         }
     }
-
 
     // =============================================================
     //                      PRIVATE FUNCTIONS
