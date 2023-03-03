@@ -82,6 +82,10 @@ contract LuckyDuckPack is
      * distribution is truly provably fair as well as hack-proof.
      */
     uint256 public REVEAL_OFFSET;
+    /**
+     * @notice Collection reveal timestamp.
+     */
+    uint256 public REVEAL_TIMESTAMP;
 
     // Chainlink VRF (Verifiable Random Function) - fair collection reveal
     address private constant VRFcoordinator = 0xf0d54349aDdcf704F77AE15b96510dEA15cb7952; // Contract
@@ -128,7 +132,7 @@ contract LuckyDuckPack is
     error EmptyInput(uint256 index);
 
     // =============================================================
-    //                           FUNCTIONS
+    //                       MAIN FUNCTIONS
     // =============================================================
 
     /**
@@ -174,6 +178,55 @@ contract LuckyDuckPack is
     }
 
     /**
+     * @notice Collection reveal (request randomness - Chainlink VRF).
+     * This function can be called only once and by anyone, but only after
+     * all tokens have been minted.
+     */
+    function reveal() external returns (bytes32 requestId) {
+        require(MAX_SUPPLY == totalSupply, "Called before minting completed");
+        require(!_revealRequested, "Reveal already requested");
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
+        _revealRequested = true;
+        requestId = requestRandomness(keyHash, fee);
+        emit RevealRequested(requestId);
+    }
+
+    /**
+     * @notice Callback function used by Chainlink VRF (for collection reveal).
+     */
+    function fulfillRandomness(bytes32 requestId, uint256 randomness)
+        internal
+        override
+    {
+        require(!_isRevealed(), "Already revealed"); // Ensure it's not called twice
+        uint256 randomOffset = randomness % MAX_SUPPLY; // Compute the final value
+        REVEAL_OFFSET = randomOffset == 0 ? 1 : randomOffset; // Offset cannot be zero
+        REVEAL_TIMESTAMP = block.timestamp;
+        emit RevealFulfilled(requestId, REVEAL_OFFSET);
+    }
+
+    /**
+     * @notice Change the location from which the offchain data is fetched
+     * (IPFS / Arweave). If both locations are reachable, calling this has
+     * basically no effect. This function is unlikely to be useful, ever.
+     * But, better safe than sorry.
+     */
+    function toggleOffchainDataLocation() external {
+        usingArweaveBackup ?
+            usingArweaveBackup = false :
+            usingArweaveBackup = true;
+    }
+
+    /**
+     * @notice Get the revealed ID.
+     * @param id Token ID.
+     */
+    function revealedId(uint256 id) public view virtual returns (uint256) {
+        require(_isRevealed(), "Collection not revealed");
+        return (id + REVEAL_OFFSET) % MAX_SUPPLY;
+    }
+
+    /**
      * @notice Return the contract metadata URI.
      */
     function contractURI() public pure returns (string memory) {
@@ -190,54 +243,6 @@ contract LuckyDuckPack is
             _isRevealed() // If revealed,
                 ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
                 : _unrevealedURI; // otherwise return the unrevealedURI.
-    }
-
-    /**
-     * @notice Get the revealed ID.
-     * @param id Token ID.
-     */
-    function revealedId(uint256 id) public view virtual returns (uint256) {
-        require(_isRevealed(), "Collection not revealed");
-        return (id + REVEAL_OFFSET) % MAX_SUPPLY;
-    }
-
-    /**
-     * @notice Token reveal (request randomness - Chainlink VRF).
-     * This function can be called only once and by anyone, but only after
-     * all tokens have been minted.
-     */
-    function reveal() external returns (bytes32 requestId) {
-        require(MAX_SUPPLY == totalSupply, "Called before minting completed");
-        require(!_revealRequested, "Reveal already requested");
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
-        _revealRequested = true;
-        requestId = requestRandomness(keyHash, fee);
-        emit RevealRequested(requestId);
-    }
-
-    /**
-     * @notice Toggle off-chain data fetch location (IPFS / Arweave).
-     * If both are reachable, calling this has basically no effect.
-     * This function is unlikely to be useful, ever. But better safe than
-     * sorry.
-     */
-    function toggleOffchainDataLocation() external {
-        usingArweaveBackup ?
-            usingArweaveBackup = false :
-            usingArweaveBackup = true;
-    }
-
-    /**
-     * @notice Callback function used by Chainlink VRF (collection reveal).
-     */
-    function fulfillRandomness(bytes32 requestId, uint256 randomness)
-        internal
-        override
-    {
-        require(!_isRevealed(), "Already revealed"); // Ensure it's not called twice
-        uint256 randomOffset = randomness % MAX_SUPPLY; // Compute the final value
-        REVEAL_OFFSET = randomOffset == 0 ? 1 : randomOffset; // Offset cannot be zero
-        emit RevealFulfilled(requestId, REVEAL_OFFSET);
     }
 
     /**
