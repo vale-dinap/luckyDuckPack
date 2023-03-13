@@ -433,4 +433,4 @@ contract LuckyDuckPack is
 
 }
 
-// :)
+// Quack! :)

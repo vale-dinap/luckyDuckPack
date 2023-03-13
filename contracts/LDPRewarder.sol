@@ -616,4 +616,4 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 }
 
-// :)
+// Quack! :)

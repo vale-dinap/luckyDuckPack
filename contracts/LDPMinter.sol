@@ -244,4 +244,4 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 }
 
-// :)
+// Quack! :)
