@@ -193,7 +193,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     function emergencyWithdraw() external onlyOwner {
         // Revert if the function is called before the minting process ends
         uint256 currentSupply = nft.totalSupply();
-        require(nft.totalSupply() == nft.MAX_SUPPLY(), "Minting in progress");
+        require(currentSupply == nft.MAX_SUPPLY(), "Minting in progress");
         // Attempt the normal withdraw first: if succeeds, emergency actions won't be performed
         uint256 newSales = currentSupply - supplyAtLastWithdraw;
         supplyAtLastWithdraw = currentSupply;

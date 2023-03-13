@@ -128,8 +128,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
 
     /**
      * @dev Earnings in Wrapped Ether (WETH) are meant to be converted to ETH
-     * rather than claimed separately like the other ERC20: this modifier
-     * prevents ERC20-only functions from operating with WETH.
+     * (rather than claimed separately like any other ERC20): this modifier
+     * prevents ERC20 functions from operating with WETH.
      */
     modifier noWeth(address tokenContract) {
         if (tokenContract == weth) revert NotAllowedOnWETH();

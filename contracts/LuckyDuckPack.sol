@@ -72,18 +72,20 @@ contract LuckyDuckPack is
     uint256 public totalSupply;
     // Minter contract address
     address public minterContract;
-    // Whether the reveal randomness has been requested to Chainlink
+    // Whether the reveal randomness has been already requested to Chainlink
     bool private _revealRequested;
     /**
-     * @notice After all tokens have been minted, a random offset number is
-     * generated via VRF, so that:
+     * @notice Once all tokens have been minted, a random offset number is
+     * generated using VRF (Verifiable Random Function). This offset is then added
+     * to the Token ID, and the resulting value is taken modulo of the maximum
+     * supply of tokens to obtain the Revealed ID:
      *
-     * [Revealed ID] = ([Token ID] + [Offset]) % [Max Supply].
+     * [Revealed ID] = ([Token ID] + [Offset]) % [Max Supply]
      *
-     * As the random offset is applied to all token IDs and generated only after
-     * all tokens have been already minted, there is no way to exploit the system
-     * and snipe/cherrypick tokens with a higher rarity score; in other words, the
-     * distribution is truly provably fair as well as hack-proof.
+     * As the random offset is applied uniformly to all token IDs only after the
+     * minting process is completed, the system cannot be exploited to cherry-pick
+     * tokens with a higher rarity score. In other words, the distribution is
+     * guaranteed to be fair and resistant to any potential hacks.
      */
     uint256 public REVEAL_OFFSET;
     /**
@@ -287,7 +289,8 @@ contract LuckyDuckPack is
     // =============================================================
 
     // This section contains functions that help retrieving all tokens owned by the
-    // same address, used by the Rewarder contract to cash out all token revenues at once.
+    // same address, used by the Rewarder contract to cash out the revenues from all
+    // the owned tokens at once.
 
     /**
      * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
