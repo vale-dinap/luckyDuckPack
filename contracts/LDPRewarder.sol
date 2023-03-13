@@ -31,6 +31,11 @@ import "./lib/tools/WethUnwrapper.sol";
  * contract's liquidity or funds earned by NFT holders.
  */
 contract LDPRewarder is Ownable, ReentrancyGuard {
+
+    // =============================================================
+    //                        CUSTOM TYPES
+    // =============================================================
+
     /**
      * @dev Type defining revenues info.
      * Keeps track of lifetime earnings and lifetime cashout of each NFT, so that:
@@ -48,6 +53,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
          */
     }
 
+    // =============================================================
+    //                     CONTRACT VARIABLES
+    // =============================================================
+
     // ETH revenues data
     Revenues private _revenues;
     // ERC20 tokens revenues data
@@ -64,6 +73,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // WETH token address and WETH Unwrapper contract
     address private constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     WethUnwrapper private immutable wethUnwrapper;
+
+    // =============================================================
+    //                         CONSTRUCTOR
+    // =============================================================
 
     /**
      * @dev Failsafe: set deployer as defult receiver of creator earnings
@@ -328,7 +341,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * Can be set only once and becomes immutable afterwards.
      */
     function setNftAddress(address nftAddr) external onlyOwner {
-        require(address(nft) == address(0), "Overriding denied");
+        require(address(nft) == address(0), "Override denied");
         nft = ILDP(nftAddr);
     }
 

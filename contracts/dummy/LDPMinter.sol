@@ -73,9 +73,21 @@ contract LDPMinter {
         else return _price3;
     }
 
+    /**
+     * @notice Check whether the minting has started.
+     */
+    function mintingStarted() external view returns (bool) {
+        return block.timestamp > mintingStartTime;
+    }
+
     // TEST-ONLY FUNCTIONS - NOT PRESENT IN PRODUCTION VERSION //
 
     function TEST_increaseMintedSupply(uint256 amount) public {
         TEST_mintedSupply += amount;
     }        
+
+    function TEST_setMintingStartTime(uint256 startTime) public {
+        mintingStartTime = startTime;
+    }  
+
 }

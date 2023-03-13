@@ -31,19 +31,22 @@ import "./lib/interfaces/ILDP.sol";
  *  hacking, thanks to the use of Chainlink VRF - Further information can
  *  be found in the NFT contract.
  * -The design of the mint function has been kept minimal to reduce its gas
- *  costs: it doesn't even forward funds to the creator, who has to
- *  manually withdraw them instead.
+ *  costs.
  * -A portion of the payment is immediately distributed to token holders as
  *  a starting incentive/cashback, with the smart contract enforcing the
  *  distribution.
  */
 contract LDPMinter is Ownable, ReentrancyGuard {
+    // =============================================================
+    //                     CONTRACT VARIABLES
+    // =============================================================
+
     // Pricing - hardcoded for transparency and efficiency
     uint256 private constant _price1 = 1.3 ether; // From 1 to 3333
     uint256 private constant _price2 = 1.8 ether; // From 3334 to 6666
     uint256 private constant _price3 = 2.3 ether; // From 6667 to 10000
     // Number of tokens reserved to the team
-    uint256 private constant _teamReserved = 20;
+    uint256 private constant _teamReserved = 25;
     // Minting start time (Unix timestamp)
     uint256 public mintingStartTime;
     // Instance of the token contract
@@ -85,7 +88,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
                 revert PricePaidIncorrect();
         }
         // Finally, mint the tokens
-        _mintBatch_K2B(amount);
+        _mint_Ei7(amount);
     }
 
     /**
@@ -134,7 +137,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
                 "Requested time is in the past"
             );
             mintingStartTime = startTime;
-            _mintBatch_K2B(_teamReserved);
+            _mint_Ei7(_teamReserved);
         }
     }
 
@@ -150,6 +153,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function currentPrice() external view returns (uint256) {
         return _currentPrice_t6y();
+    }
+
+    /**
+     * @notice Check whether the minting has started.
+     */
+    function mintingStarted() external view returns (bool) {
+        return block.timestamp > mintingStartTime;
     }
 
     /**
@@ -200,6 +210,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // =============================================================
 
     /**
+     * @dev Mint `amount` tokens to sender address.
+     */
+    function _mint_Ei7(uint256 amount) private {
+        nft.mint_Qgo(msg.sender, amount);
+    }
+
+    /**
      * @dev Returns the current price (depending on the remaining supply).
      */
     function _currentPrice_t6y() private view returns (uint256) {
@@ -210,23 +227,12 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Mint multiple tokens.
-     */
-    function _mintBatch_K2B(uint256 amount) private {
-        for (uint256 i; i < amount; ) {
-            nft.mint_i5a(msg.sender);
-            unchecked {++i;}
-        }
-    }
-
-    /**
      * @dev Send proceeds to creator address and incentives to rewarder contract.
      * @param newTokensSold Number of new sales
      */
-    function _processWithdraw_ama(uint256 newTokensSold)
-        private
-        returns (bool creatorPaid, bool rewarderPaid)
-    {
+    function _processWithdraw_ama(
+        uint256 newTokensSold
+    ) private returns (bool creatorPaid, bool rewarderPaid) {
         uint256 incentivesPerSale = 0.25 ether;
         uint256 totalIncentives = incentivesPerSale * newTokensSold;
         uint256 _bal = address(this).balance;

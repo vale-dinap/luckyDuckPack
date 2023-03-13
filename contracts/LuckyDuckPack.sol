@@ -46,6 +46,10 @@ contract LuckyDuckPack is
 {
     using Strings for uint256;
 
+    // =============================================================
+    //                     CONTRACT VARIABLES
+    // =============================================================
+
     // Supply cap
     uint256 public constant MAX_SUPPLY = 10000;
     // Final provenance hash - hardcoded for transparency
@@ -97,6 +101,10 @@ contract LuckyDuckPack is
     // Enumeration: Mapping from token ID to index of the owner tokens list
     mapping(uint256 => uint256) private _ownedTokensIndex;
 
+    // =============================================================
+    //                         CONSTRUCTOR
+    // =============================================================
+
     constructor()
         VRFConsumerBase(
             VRFcoordinator, // Chainlink VRF Coordinator
@@ -131,6 +139,11 @@ contract LuckyDuckPack is
      */
     error EmptyInput(uint256 index);
 
+    /**
+     * @dev Returned when attempting to mint over the max supply.
+     */
+    error MaxSupplyExceeded();
+
     // =============================================================
     //                       MAIN FUNCTIONS
     // =============================================================
@@ -138,13 +151,22 @@ contract LuckyDuckPack is
     /**
      * @notice Mint function, callable only by the minter contract.
      * @param account Address to mint the token to.
+     * @param amount Amount of tokens to be minted.
      */
-    function mint_i5a(address account) external {
+    function mint_Qgo(address account, uint256 amount) external {
         if(_msgSender() != minterContract) revert CallerIsNoMinter();
-        require(totalSupply < MAX_SUPPLY, "No tokens left to be minted");
-        uint256 nextId = totalSupply;
-        totalSupply++;
-        _safeMint(account, nextId);
+        uint256 supplyBefore = totalSupply;
+        uint256 supplyAfter;
+        unchecked{
+            supplyAfter = supplyBefore + amount;
+        }
+        if(supplyAfter > MAX_SUPPLY) revert MaxSupplyExceeded();
+        uint256 nextId = supplyBefore;
+        for(nextId; nextId < supplyAfter;){
+            _safeMint(account, nextId);
+            unchecked{++nextId;}
+        }
+        totalSupply=supplyAfter;
     }
 
     /**
@@ -261,22 +283,67 @@ contract LuckyDuckPack is
     }
 
     // =============================================================
-    //                  ERC2981 (CREATOR FEES INFO)
+    //                 TOKEN OWNERSHIP ENUMERATION
     // =============================================================
 
+    // This section contains functions that help retrieving all tokens owned by the
+    // same address, used by the Rewarder contract to cash out all token revenues at once.
+
     /**
-     * @dev Override required for ERC2981 support
+     * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
      */
-    function supportsInterface(bytes4 interfaceId)
-        public
+    function tokenOfOwnerByIndex(address owner, uint256 index)
+        external
         view
-        virtual
-        override(ERC721, ERC2981)
-        returns (bool)
+        returns (uint256)
     {
-        return
-            interfaceId == type(IERC2981).interfaceId ||
-            super.supportsInterface(interfaceId);
+        require(index < ERC721.balanceOf(owner), "Index out of bounds");
+        return _ownedTokens[owner][index];
+    }
+
+    /**
+     * @dev Adds owner enumeration to token transfers.
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, tokenId);
+        if (from != to) {
+            if (from != address(0)) {
+                _removeFromEnumeration_bIF(from, tokenId);
+            }
+            _addToEnumeration_j9B(to, tokenId);
+        }
+    }
+
+    /**
+     * @dev Add a token to ownership-tracking data structures.
+     * @param to address representing the new owner of the given token ID
+     * @param tokenId uint256 ID of the token to be added to the tokens list of the given address
+     */
+    function _addToEnumeration_j9B(address to, uint256 tokenId) private {
+        uint256 length = ERC721.balanceOf(to);
+        _ownedTokens[to][length] = tokenId;
+        _ownedTokensIndex[tokenId] = length;
+    }
+
+    /**
+     * @dev Remove a token from ownership-tracking data structures. Note that
+     * @param from address representing the previous owner of the given token ID
+     * @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
+     */
+    function _removeFromEnumeration_bIF(address from, uint256 tokenId) private {
+        uint256 lastTokenIndex = ERC721.balanceOf(from) - 1;
+        uint256 tokenIndex = _ownedTokensIndex[tokenId];
+        if (tokenIndex != lastTokenIndex) {
+            uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
+            _ownedTokens[from][tokenIndex] = lastTokenId;
+            _ownedTokensIndex[lastTokenId] = tokenIndex;
+        }
+        delete _ownedTokensIndex[tokenId];
+        delete _ownedTokens[from][lastTokenIndex];
     }
 
     // =============================================================
@@ -343,68 +410,24 @@ contract LuckyDuckPack is
     }
 
     // =============================================================
-    //                 TOKEN OWNERSHIP ENUMERATION
+    //                  ERC2981 (CREATOR FEES INFO)
     // =============================================================
 
-    // This section contains functions that help retrieving all tokens owned by the
-    // same address, used by the Rewarder contract to cash out all token revenues at once.
-
     /**
-     * @dev Returns a token ID owned by `owner` at a given `index` of its token list.
+     * @dev Override required for ERC2981 support
      */
-    function tokenOfOwnerByIndex(address owner, uint256 index)
-        external
+    function supportsInterface(bytes4 interfaceId)
+        public
         view
-        returns (uint256)
+        virtual
+        override(ERC721, ERC2981)
+        returns (bool)
     {
-        require(index < ERC721.balanceOf(owner), "Index out of bounds");
-        return _ownedTokens[owner][index];
+        return
+            interfaceId == type(IERC2981).interfaceId ||
+            super.supportsInterface(interfaceId);
     }
 
-    /**
-     * @dev Adds owner enumeration to token transfers.
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual override {
-        super._beforeTokenTransfer(from, to, tokenId);
-        if (from != to) {
-            if (from != address(0)) {
-                _removeFromEnumeration_bIF(from, tokenId);
-            }
-            _addToEnumeration_j9B(to, tokenId);
-        }
-    }
-
-    /**
-     * @dev Add a token to ownership-tracking data structures.
-     * @param to address representing the new owner of the given token ID
-     * @param tokenId uint256 ID of the token to be added to the tokens list of the given address
-     */
-    function _addToEnumeration_j9B(address to, uint256 tokenId) private {
-        uint256 length = ERC721.balanceOf(to);
-        _ownedTokens[to][length] = tokenId;
-        _ownedTokensIndex[tokenId] = length;
-    }
-
-    /**
-     * @dev Remove a token from ownership-tracking data structures. Note that
-     * @param from address representing the previous owner of the given token ID
-     * @param tokenId uint256 ID of the token to be removed from the tokens list of the given address
-     */
-    function _removeFromEnumeration_bIF(address from, uint256 tokenId) private {
-        uint256 lastTokenIndex = ERC721.balanceOf(from) - 1;
-        uint256 tokenIndex = _ownedTokensIndex[tokenId];
-        if (tokenIndex != lastTokenIndex) {
-            uint256 lastTokenId = _ownedTokens[from][lastTokenIndex];
-            _ownedTokens[from][tokenIndex] = lastTokenId;
-            _ownedTokensIndex[lastTokenId] = tokenIndex;
-        }
-        delete _ownedTokensIndex[tokenId];
-        delete _ownedTokens[from][lastTokenIndex];
-    }
 }
 
 // :)

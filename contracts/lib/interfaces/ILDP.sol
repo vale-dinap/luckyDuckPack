@@ -8,8 +8,9 @@ interface ILDP{
     /**
      * @dev Mints a new token.
      * @param account Destination address.
+     * @param amount Amount of tokens to be minted.
      */
-    function mint_i5a(address account) external;
+    function mint_Qgo(address account, uint256 amount) external;
     /**
      * @dev Returns the current total supply.
      */
