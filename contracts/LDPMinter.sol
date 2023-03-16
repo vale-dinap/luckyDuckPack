@@ -64,10 +64,11 @@ contract LDPMinter is Ownable, ReentrancyGuard {
 
     error InputIsZero(); // When using address(0) as function parameter
     error MintingNotStarted(); // Attempting to mint earlier than [mintingStartTime]
-    error MintingAlreadyStarted(); // Attempting to perform setup operations later than [mintingStartTime]
     error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
     error PricePaidIncorrect(); // Returned when underpaying
     error PaymentError(bool successA, bool successB); // Transfer error
+    error AlreadyInitialized(); // Calling initialization functions more than once
+    error StartTimeIsInThePast(); // Attempting to set the start time in the past
 
     // =============================================================
     //                         FUNCTIONS
@@ -92,32 +93,22 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Link the token contract to the nft contract address.
-     * Can be set only once, then it becomes immutable.
+     * @notice Link the Minter to the the NFT contract and the Rewarder
+     * contract; also sets the creator address; this function can be
+     * called only by the admin, and only once.
      */
-    function setNftAddress(address nftAddr) external onlyOwner {
-        require(address(nft) == address(0), "Overriding denied");
-        nft = ILDP(nftAddr);
-    }
-
-    /**
-     * @notice Set the creator address.
-     */
-    function setCreatorAddress(address creatorAddr) external onlyOwner {
-        if (creatorAddr == address(0)) revert InputIsZero();
-        creator = creatorAddr;
-    }
-
-    /**
-     * @notice Set the LDP Rewarder contract address. Locked after minting starts.
-     */
-    function setRewarderAddress(address rewarderAddr) external onlyOwner {
-        uint256 _startTime = mintingStartTime;
-        if (_startTime != 0) {
-            if (block.timestamp > _startTime) revert MintingAlreadyStarted();
-        }
+    function initializeContract(
+        address nftAddr,
+        address rewarderAddr,
+        address creatorAddr
+    ) external onlyOwner {
+        if (address(nft) != address(0)) revert AlreadyInitialized();
         if (rewarderAddr == address(0)) revert InputIsZero();
+        if (creatorAddr == address(0)) revert InputIsZero();
+        if (nftAddr == address(0)) revert InputIsZero();
+        nft = ILDP(nftAddr);
         rewarder = rewarderAddr;
+        creator = creatorAddr;
     }
 
     /**
@@ -130,22 +121,27 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @param startTime Minting start time (Unix timestamp)
      */
     function initializeMinting(uint256 startTime) external onlyOwner {
-        if (mintingStartTime != 0) revert("Already initialized");
-        else {
-            require(
-                startTime > block.timestamp,
-                "Requested time is in the past"
-            );
-            mintingStartTime = startTime;
-            _mint_Ei7(_teamReserved);
-        }
+        if (mintingStartTime != 0) revert AlreadyInitialized();
+        if (startTime < block.timestamp) revert StartTimeIsInThePast();
+        mintingStartTime = startTime;
+        _mint_Ei7(_teamReserved);
+    }
+
+    /**
+     * @notice Set the creator address.
+     */
+    function setCreatorAddress(address creatorAddr) external onlyOwner {
+        if (creatorAddr == address(0)) revert InputIsZero();
+        creator = creatorAddr;
     }
 
     /**
      * @notice Shows how many tokens are left to be minted.
      */
-    function mintableSupply() external view returns (uint256) {
-        return nft.MAX_SUPPLY() - nft.totalSupply();
+    function mintableSupply() external view returns (uint256 supply) {
+        unchecked {
+            supply = nft.MAX_SUPPLY() - nft.totalSupply();
+        }
     }
 
     /**
