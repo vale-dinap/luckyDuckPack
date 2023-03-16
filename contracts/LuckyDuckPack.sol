@@ -236,9 +236,7 @@ contract LuckyDuckPack is
      * But, better safe than sorry.
      */
     function toggleOffchainDataLocation() external {
-        usingArweaveBackup ?
-            usingArweaveBackup = false :
-            usingArweaveBackup = true;
+        usingArweaveBackup = !usingArweaveBackup;
     }
 
     /**
