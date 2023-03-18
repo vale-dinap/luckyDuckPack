@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-///// MINTER DUMMY CONTRACT - ABI consistent with the production version - includes custom errors /////
+///// MINTER DUMMY CONTRACT - ABI consistent with the production version - includes events/errors /////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract LDPMinter {
@@ -21,13 +21,17 @@ contract LDPMinter {
     uint256 private constant _price1 = 0.1 ether; // From 1 to 3333
     uint256 private constant _price2 = 0.15 ether; // From 3334 to 6666
     uint256 private constant _price3 = 0.2 ether; // From 6667 to 10000
-    // Minting start time (Unix timestamp)
-    uint256 public mintingStartTime;
+    // When the admin sets this to 'true', minting is enabled and cannot be reverted back to 'false'
+    bool public mintingStarted;
+
+    // Events
+    event MintingStarted(); // Emitted when the minting is opended
 
     // Custom errors
     error MaxMintsPerCallExceeded();
     error PricePaidIncorrect();
     error MintingNotStarted();
+    error MintingAlreadyStarted();
 
     /**
      * @notice Mint (buy) tokens to the caller address.
@@ -35,15 +39,26 @@ contract LDPMinter {
      */
     function mint(uint256 amount) external payable {
         // Revert if minting hasn't started
-        if(block.timestamp < mintingStartTime) revert MintingNotStarted();
+        if (!mintingStarted) revert MintingNotStarted();
         // Revert if attempting to mint more than 10 tokens at once
         if (amount > 10) revert MaxMintsPerCallExceeded();
         // Revert if underpaying
-        unchecked{
-            if(msg.value < currentPrice() * amount) revert PricePaidIncorrect();
+        unchecked {
+            if (msg.value < currentPrice() * amount)
+                revert PricePaidIncorrect();
         }
         // Finally, mint the tokens
         // HERE WILL BE THE MINT CALL - THE LINKED ERC721 CONTRACT WILL SEND EVENTS
+    }
+
+    /**
+     * @notice Enable minting.
+     * @dev This function can be called only once.
+     */
+    function initializeMinting() external {
+        if (mintingStarted) revert MintingAlreadyStarted();
+        mintingStarted = true;
+        emit MintingStarted();
     }
 
     /**
@@ -73,21 +88,10 @@ contract LDPMinter {
         else return _price3;
     }
 
-    /**
-     * @notice Check whether the minting has started.
-     */
-    function mintingStarted() external view returns (bool) {
-        return block.timestamp > mintingStartTime;
-    }
-
     // TEST-ONLY FUNCTIONS - NOT PRESENT IN PRODUCTION VERSION //
 
     function TEST_increaseMintedSupply(uint256 amount) public {
         TEST_mintedSupply += amount;
     }        
-
-    function TEST_setMintingStartTime(uint256 startTime) public {
-        mintingStartTime = startTime;
-    }  
 
 }

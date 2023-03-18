@@ -37,6 +37,7 @@ import "./lib/interfaces/ILDP.sol";
  *  distribution.
  */
 contract LDPMinter is Ownable, ReentrancyGuard {
+
     // =============================================================
     //                     CONTRACT VARIABLES
     // =============================================================
@@ -47,8 +48,8 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     uint256 private constant _price3 = 2.3 ether; // From 6667 to 10000
     // Number of tokens reserved to the team
     uint256 private constant _teamReserved = 25;
-    // Minting start time (Unix timestamp)
-    uint256 public mintingStartTime;
+    // When the admin sets this to 'true', minting is enabled and cannot be reverted back to 'false'
+    bool public mintingStarted;
     // Instance of the token contract
     ILDP public nft;
     // LDP Rewarder contract address
@@ -59,16 +60,17 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     uint256 private supplyAtLastWithdraw = _teamReserved; // Start at [_teamReserved] (as these won't be paid)
 
     // =============================================================
-    //                        CUSTOM ERRORS
+    //                  CUSTOM ERRORS AND EVENTS
     // =============================================================
 
+    event MintingStarted(); // Emitted when the minting is opended
+
     error InputIsZero(); // When using address(0) as function parameter
-    error MintingNotStarted(); // Attempting to mint earlier than [mintingStartTime]
+    error MintingNotStarted(); // Attempting to mint before [mintingStarted] is enabled
+    error MintingAlreadyStarted(); // Attempting operations forbidden after the minting begins
     error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
     error PricePaidIncorrect(); // Returned when underpaying
     error PaymentError(bool successA, bool successB); // Transfer error
-    error AlreadyInitialized(); // Calling initialization functions more than once
-    error StartTimeIsInThePast(); // Attempting to set the start time in the past
 
     // =============================================================
     //                         FUNCTIONS
@@ -80,7 +82,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function mint(uint256 amount) external payable nonReentrant {
         // Revert if minting hasn't started
-        if (block.timestamp < mintingStartTime) revert MintingNotStarted();
+        if (!mintingStarted) revert MintingNotStarted();
         // Revert if attempting to mint more than 10 tokens at once
         if (amount > 10) revert MaxMintsPerCallExceeded();
         // Revert if underpaying
@@ -95,14 +97,14 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     /**
      * @notice Link the Minter to the the NFT contract and the Rewarder
      * contract; also sets the creator address; this function can be
-     * called only by the admin, and only once.
+     * called only by the admin, and only until the minting hasn't started.
      */
     function initializeContract(
         address nftAddr,
         address rewarderAddr,
         address creatorAddr
     ) external onlyOwner {
-        if (address(nft) != address(0)) revert AlreadyInitialized();
+        if (mintingStarted) revert MintingAlreadyStarted();
         if (rewarderAddr == address(0)) revert InputIsZero();
         if (creatorAddr == address(0)) revert InputIsZero();
         if (nftAddr == address(0)) revert InputIsZero();
@@ -112,19 +114,17 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set minting start time and reserve [_teamReserved] tokens to
-     * admin's address.
-     * Some of these tokens will be used for giveaways, the rest will be
-     * gifted to the team.
+     * @notice Enable minting and mint [_teamReserved] tokens to admin's
+     * address. Some of these tokens will be used for giveaways, the rest
+     * will be gifted to the team.
      * @dev This function can be called only once, so admin won't be able to
      * mint more than [_teamReserved] free tokens.
-     * @param startTime Minting start time (Unix timestamp)
      */
-    function initializeMinting(uint256 startTime) external onlyOwner {
-        if (mintingStartTime != 0) revert AlreadyInitialized();
-        if (startTime < block.timestamp) revert StartTimeIsInThePast();
-        mintingStartTime = startTime;
+    function initializeMinting() external onlyOwner {
+        if (mintingStarted) revert MintingAlreadyStarted();
+        mintingStarted = true;
         _mint_Ei7(_teamReserved);
+        emit MintingStarted();
     }
 
     /**
@@ -145,17 +145,10 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Shows the current price.
+     * @notice Show the current price.
      */
     function currentPrice() external view returns (uint256) {
         return _currentPrice_t6y();
-    }
-
-    /**
-     * @notice Check whether the minting has started.
-     */
-    function mintingStarted() external view returns (bool) {
-        return block.timestamp > mintingStartTime;
     }
 
     /**
@@ -163,7 +156,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Reverts if the transfers fail.
      */
     function withdrawProceeds() external {
-        require(mintingStartTime != 0, "Called before initializeMinting");
+        if (!mintingStarted) revert MintingNotStarted();
         if (_msgSender() != owner())
             require(_msgSender() == creator, "Caller is not admin nor creator");
         uint256 currentSupply = nft.totalSupply();
@@ -189,7 +182,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     function emergencyWithdraw() external onlyOwner {
         // Revert if the function is called before the minting process ends
         uint256 currentSupply = nft.totalSupply();
-        require(currentSupply == nft.MAX_SUPPLY(), "Minting in progress");
+        require(currentSupply == nft.MAX_SUPPLY(), "Minting still in progress");
         // Attempt the normal withdraw first: if succeeds, emergency actions won't be performed
         uint256 newSales = currentSupply - supplyAtLastWithdraw;
         supplyAtLastWithdraw = currentSupply;
