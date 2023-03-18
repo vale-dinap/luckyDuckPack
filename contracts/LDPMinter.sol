@@ -22,8 +22,6 @@ import "./lib/interfaces/ILDP.sol";
  * This is accomplished through features including:
  * -The administrator's privileges are very limited and, once the minting
  *  process begins, the majority of the contract data becomes immutable.
- * -The initiation of minting is determined by a set time, and once it
- *  begins, it cannot be stopped.
  * -Variables such as prices are hardcoded to ensure transparency and lower
  *  gas fees.
  * -Token distribution and reveal are ensured to be fair and secure from
