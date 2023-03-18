@@ -145,7 +145,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Makes functions revert if the caller doesn't own the token `tokenId`.
+     * @dev Makes functions revert if the caller doesn't own the NFT `tokenId`.
      */
     modifier onlyTokenOwner(uint256 tokenId) {
         if (msg.sender != nft.ownerOf(tokenId))
@@ -170,14 +170,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // =============================================================
 
     /**
-     * @notice Cashout the revenues accrued by all owned NFTs.
+     * @notice Cashout the revenues (eth) accrued by all owned NFTs.
      */
     function cashout() external nonReentrant {
         _accountCashout_dHm(msg.sender);
     }
 
     /**
-     * @notice Cashout revenues accrued by the specified NFT.
+     * @notice Cashout revenues (eth) accrued by the specified NFT.
      */
     function nftCashout(uint256 tokenId) external nonReentrant {
         _nftCashout_M29(tokenId);
@@ -374,11 +374,10 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // =============================================================
 
     /**
-     * @dev If this smart-contract holds any WETH, unwrap it.
-     * By doing so, the receive function is also called which causes
-     * the unwrapped ETH to be added to the revenue records. This is
-     * a workaround as normally the automatic revenues distribution
-     * could not occur if the creator fees are received in WETH.
+     * @dev Unwrap any WETH held by this smart contract.
+     * When WETH is unwrapped, the receive function is called, which adds
+     * the resulting ETH to the revenue records. This is a workaround to
+     * enable automatic revenue distribution for creator fees received in WETH.
      */
     function _unwrapWethIfAny__um() private {
         uint256 bal = IWETH(weth).balanceOf(address(this));
@@ -487,9 +486,9 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Updates ETH revenue records. This function is embedded in
-     * the receive() fallback, therefore automatically called whenever
-     * new ETH is received.
+     * @dev Updates the ETH revenue records when new ETH is received.
+     * This function is called automatically when ETH is received by the
+     * smart contract.
      * @param newRevenues Amount of ETH to be added to the revenue records
      */
     function _updateRevenueRecords_tku(uint256 newRevenues) private {
@@ -500,7 +499,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Same logics of {_updateRevenueRecords_tku} with any ERC20 token.
+     * @dev Same as {_updateRevenueRecords_tku} but for ERC20 tokens.
      * @param newRevenues Amount to be added to revenues
      * @param tokenAddress Address of the ERC20 token contract
      * @param tokenBalance Up-to-date token balance of this contract
@@ -531,15 +530,16 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         uint256 curBalance = IERC20(tokenAddress).balanceOf(address(this));
         uint256 processedRevenues = _processedErc20Revenues[tokenAddress];
         if (curBalance > processedRevenues) {
+            uint256 _newRevenues;
             unchecked {
-                uint256 _newRevenues = curBalance - processedRevenues;
-                _updateRevenueRecords_e20(
-                    _newRevenues,
-                    tokenAddress,
-                    curBalance
-                );
-                emit ProcessedErc20(tokenAddress, _newRevenues);
+                _newRevenues = curBalance - processedRevenues;
             }
+            _updateRevenueRecords_e20(
+                _newRevenues,
+                tokenAddress,
+                curBalance
+            );
+            emit ProcessedErc20(tokenAddress, _newRevenues);
         }
     }
 
