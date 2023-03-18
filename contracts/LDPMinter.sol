@@ -40,11 +40,11 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // =============================================================
 
     // Pricing - hardcoded for transparency and efficiency
-    uint256 private constant _price1 = 1.3 ether; // From 1 to 3333
-    uint256 private constant _price2 = 1.8 ether; // From 3334 to 6666
-    uint256 private constant _price3 = 2.3 ether; // From 6667 to 10000
+    uint256 private constant _PRICE1 = 1.3 ether; // From 1 to 3333
+    uint256 private constant _PRICE2 = 1.8 ether; // From 3334 to 6666
+    uint256 private constant _PRICE3 = 2.3 ether; // From 6667 to 10000
     // Number of tokens reserved to the team
-    uint256 private constant _teamReserved = 25;
+    uint256 private constant _TEAM_RESERVED = 25;
     // When the admin sets this to 'true', minting is enabled and cannot be reverted back to 'false'
     bool public mintingStarted;
     // Instance of the token contract
@@ -54,7 +54,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Creator
     address private creator;
     // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
-    uint256 private supplyAtLastWithdraw = _teamReserved; // Start at [_teamReserved] (as these won't be paid)
+    uint256 private supplyAtLastWithdraw = _TEAM_RESERVED; // Start at [_TEAM_RESERVED] (as these won't be paid)
 
     // =============================================================
     //                  CUSTOM ERRORS AND EVENTS
@@ -111,16 +111,16 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Enable minting and mint [_teamReserved] tokens to admin's
+     * @notice Enable minting and mint [_TEAM_RESERVED] tokens to admin's
      * address. Some of these tokens will be used for giveaways, the rest
      * will be gifted to the team.
      * @dev This function can be called only once, so admin won't be able to
-     * mint more than [_teamReserved] free tokens.
+     * mint more than [_TEAM_RESERVED] free tokens.
      */
     function initializeMinting() external onlyOwner {
         if (mintingStarted) revert MintingAlreadyStarted();
         mintingStarted = true;
-        _mint_Ei7(_teamReserved);
+        _mint_Ei7(_TEAM_RESERVED);
         emit MintingStarted();
     }
 
@@ -207,9 +207,9 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function _currentPrice_t6y() private view returns (uint256) {
         uint256 curSupply = nft.totalSupply();
-        if (curSupply < 3334) return _price1;
-        else if (curSupply < 6667) return _price2;
-        else return _price3;
+        if (curSupply < 3334) return _PRICE1;
+        else if (curSupply < 6667) return _PRICE2;
+        else return _PRICE3;
     }
 
     /**

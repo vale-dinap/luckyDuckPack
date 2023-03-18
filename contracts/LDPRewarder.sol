@@ -65,13 +65,13 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
 
     // ID representing the creator within the mapping "lifetimeCollected"
-    uint256 private constant _creatorId = 31415926535;
+    uint256 private constant _CREATOR_ID = 31415926535;
     // Creator address - only for cashout: creator has no special permissions
     address private _creator;
     // Lucky Duck Pack NFT contract
     ILDP public nft;
     // WETH token address and WETH Unwrapper contract
-    address private constant weth = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     WethUnwrapper private immutable wethUnwrapper;
 
     // =============================================================
@@ -85,7 +85,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     constructor() {
         _creator = msg.sender;
-        wethUnwrapper = new WethUnwrapper(weth);
+        wethUnwrapper = new WethUnwrapper(WETH);
     }
 
     // =============================================================
@@ -140,7 +140,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * prevents ERC20 functions from operating with WETH.
      */
     modifier noWeth(address tokenContract) {
-        if (tokenContract == weth) revert NotAllowedOnWETH();
+        if (tokenContract == WETH) revert NotAllowedOnWETH();
         _;
     }
 
@@ -245,7 +245,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @notice Check if the contract has any WETH pending to be unwrapped.
      */
     function unprocessedWeth() external view returns (uint256) {
-        return IWETH(weth).balanceOf(address(this));
+        return IWETH(WETH).balanceOf(address(this));
     }
 
     /**
@@ -279,7 +279,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256 accruedRevenues)
     {
-        if (tokenAddress == weth) return 0;
+        if (tokenAddress == WETH) return 0;
         else {
             uint256 numOwned = nft.balanceOf(account);
             for (uint256 i; i < numOwned; ) {
@@ -309,7 +309,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256)
     {
-        if (tokenAddress == weth) return 0;
+        if (tokenAddress == WETH) return 0;
         else return _getNftRevenues_idw(_erc20Revenues[tokenAddress], tokenId);
     }
 
@@ -323,7 +323,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (bool)
     {
-        if (tokenAddress == weth) return true;
+        if (tokenAddress == WETH) return true;
         else
             return
                 IERC20(tokenAddress).balanceOf(address(this)) ==
@@ -380,12 +380,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * enable automatic revenue distribution for creator fees received in WETH.
      */
     function _unwrapWethIfAny__um() private {
-        uint256 bal = IWETH(weth).balanceOf(address(this));
+        uint256 bal = IWETH(WETH).balanceOf(address(this));
         if (bal != 0) {
-            IWETH(weth).transfer(address(wethUnwrapper), bal);
-            wethUnwrapper.unwrap_aof(bal);
-            wethUnwrapper.withdraw_wdp();
-            emit UnwrappedWeth();
+            bool success = IWETH(WETH).transfer(address(wethUnwrapper), bal);
+            if(success){
+                wethUnwrapper.unwrap_aof(bal);
+                wethUnwrapper.withdraw_wdp();
+                emit UnwrappedWeth();
+            }
         }
     }
 
@@ -575,8 +577,8 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
                 10000) / 15;
             accruedRevenues =
                 lifetimeEarningsCr -
-                revenueRecords.lifetimeCollected[_creatorId];
-            revenueRecords.lifetimeCollected[_creatorId] = lifetimeEarningsCr;
+                revenueRecords.lifetimeCollected[_CREATOR_ID];
+            revenueRecords.lifetimeCollected[_CREATOR_ID] = lifetimeEarningsCr;
         }
     }
 

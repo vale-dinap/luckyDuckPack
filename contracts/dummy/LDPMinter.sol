@@ -18,9 +18,9 @@ contract MockLDPMinter {
     // OTHER VARIABLES - ALSO AVAILABLE IN PRODUCTION VERSION //
 
     // Pricing - NOTE: Values might differ in the production version
-    uint256 private constant _price1 = 0.1 ether; // From 1 to 3333
-    uint256 private constant _price2 = 0.15 ether; // From 3334 to 6666
-    uint256 private constant _price3 = 0.2 ether; // From 6667 to 10000
+    uint256 private constant _PRICE1 = 0.1 ether; // From 1 to 3333
+    uint256 private constant _PRICE2 = 0.15 ether; // From 3334 to 6666
+    uint256 private constant _PRICE3 = 0.2 ether; // From 6667 to 10000
     // When the admin sets this to 'true', minting is enabled and cannot be reverted back to 'false'
     bool public mintingStarted;
 
@@ -83,9 +83,9 @@ contract MockLDPMinter {
      */
     function currentPrice() public view returns (uint256) {
         uint256 curSupply = TEST_mintedSupply;
-        if (curSupply < 3334) return _price1;
-        else if (curSupply < 6667) return _price2;
-        else return _price3;
+        if (curSupply < 3334) return _PRICE1;
+        else if (curSupply < 6667) return _PRICE3;
+        else return _PRICE3;
     }
 
     // TEST-ONLY FUNCTIONS - NOT PRESENT IN PRODUCTION VERSION //
