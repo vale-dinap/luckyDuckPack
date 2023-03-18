@@ -24,7 +24,7 @@ import "./lib/tools/WethUnwrapper.sol";
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
  * are received in other currencies, a separate set of functions to manually
- * process/cashout any ERC20 token -callable by anyone- is provided.
+ * process/cashout any ERC20 token is provided.
  *
  * This contract is fair, unstoppable, unpausable, immutable: the admin only has
  * the authority to change the creator cashout address, but has no access to the

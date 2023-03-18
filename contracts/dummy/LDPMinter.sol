@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 ///// MINTER DUMMY CONTRACT - ABI consistent with the production version - includes events/errors /////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-contract LDPMinter {
+contract MockLDPMinter {
 
     /** 
      * NOTE: All variables and functions with the "TEST_" prefix will NOT be available in the production contract

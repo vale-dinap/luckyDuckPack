@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 ///// DIVIDENDS DUMMY CONTRACT - ABI consistent with the production version - includes events /////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-contract LDPRewarder {
+contract MockLDPRewarder {
 
     /** 
      * NOTE: All variables and functions with the "TEST_" prefix will NOT be available in the production contract

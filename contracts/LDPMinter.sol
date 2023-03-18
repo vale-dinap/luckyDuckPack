@@ -10,8 +10,8 @@ import "./lib/interfaces/ILDP.sol";
  *
  * This contract manages the LDP collection minting process.
  *
- * We strongly recommend to thoroughly examine the code before
- * interacting with it.
+ * We strongly recommend to thoroughly examine the code before interacting
+ * with it.
  *
  * To assist in the review process, ample comments have been included
  * throughout the code.
@@ -20,13 +20,12 @@ import "./lib/interfaces/ILDP.sol";
  * secure, trustworthy and efficient.
  *
  * This is accomplished through features including:
- * -The administrator's privileges are very limited and, once the
- *  minting process begins, the majority of the contract data becomes
- *  immutable.
+ * -The administrator's privileges are very limited and, once the minting
+ *  process begins, the majority of the contract data becomes immutable.
  * -The initiation of minting is determined by a set time, and once it
  *  begins, it cannot be stopped.
- * -Variables such as prices are hardcoded to ensure transparency and
- *  lower gas fees.
+ * -Variables such as prices are hardcoded to ensure transparency and lower
+ *  gas fees.
  * -Token distribution and reveal are ensured to be fair and secure from
  *  hacking, thanks to the use of Chainlink VRF - Further information can
  *  be found in the NFT contract.

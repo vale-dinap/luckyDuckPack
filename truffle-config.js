@@ -83,7 +83,7 @@ module.exports = {
     // timeout: 100000
     reporter: 'eth-gas-reporter',
     reporterOptions : {
-      currency: "GBP",
+      currency: "EUR",
       //token: "ETH",
       //gasPriceApi: "Etherscan",
       excludeContracts: ["Migrations"]
