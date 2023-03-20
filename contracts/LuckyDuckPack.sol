@@ -206,7 +206,7 @@ contract LuckyDuckPack is
      * all tokens have been minted.
      */
     function reveal() external returns (bytes32 requestId) {
-        require(MAX_SUPPLY == totalSupply, "Called before minting completed");
+        require(totalSupply == MAX_SUPPLY, "Minting still in progress");
         require(!_revealRequested, "Reveal already requested");
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
         _revealRequested = true;
