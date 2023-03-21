@@ -16,12 +16,12 @@ import "./lib/interfaces/ILDP.sol";
  * To assist in the review process, ample comments have been included
  * throughout the code.
  *
- * Like all other Lucky Duck Pack contracts, this aims to be 100% fair,
- * secure, trustworthy and efficient.
+ * Like all other Lucky Duck Pack contracts, this aims to be fair, secure,
+ * trustworthy and efficient.
  *
  * This is accomplished through features including:
  * -The administrator's privileges are very limited and, once the minting
- *  process begins, the majority of the contract data becomes immutable.
+ *  process begins, they are further restricted to payout functions only.
  * -Variables such as prices are hardcoded to ensure transparency and lower
  *  gas fees.
  * -Token distribution and reveal are ensured to be fair and secure from
