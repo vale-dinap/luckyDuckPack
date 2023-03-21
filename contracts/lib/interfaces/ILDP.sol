@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 /**
- * @dev Interface to interact with the {LuckyDucksPack} contract.
+ * @dev Interface to interact with the {LuckyDuckPack} contract.
  */
 interface ILDP{
     /**
