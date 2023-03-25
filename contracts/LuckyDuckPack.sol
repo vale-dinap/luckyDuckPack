@@ -56,6 +56,8 @@ contract LuckyDuckPack is
     uint256 public totalSupply;
     // Final provenance hash - hardcoded for transparency
     string public constant PROVENANCE = "REPLACE_ME";
+    // Provenance timestamp
+    uint256 public immutable PROVENANCE_TIMESTAMP;
     // URIs - hardcoded for efficiency and transparency
     string private constant _UNREVEALED_URI = "REPLACE_ME";
     string private constant _CONTRACT_URI = "REPLACE_ME";
@@ -112,7 +114,9 @@ contract LuckyDuckPack is
             VRFcoordinator, // Chainlink VRF Coordinator
             0x514910771AF9Ca656af840dff83E8264EcF986CA // LINK Token
         )
-    {}
+    {
+        PROVENANCE_TIMESTAMP = block.timestamp;
+    }
 
     // =============================================================
     //                      EVENTS AND ERRORS
