@@ -44,7 +44,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     uint256 private constant _PRICE2 = 1.8 ether; // From 3334 to 6666
     uint256 private constant _PRICE3 = 2.3 ether; // From 6667 to 10000
     // Number of tokens reserved to the team
-    uint256 private constant _TEAM_RESERVED = 25;
+    uint256 private constant _TEAM_RESERVED = 30;
     // When the admin sets this to 'true', minting is enabled and cannot be reverted back to 'false'
     bool public mintingStarted;
     // Instance of the token contract
@@ -66,7 +66,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     error MintingNotStarted(); // Attempting to mint before [mintingStarted] is enabled
     error MintingAlreadyStarted(); // Attempting operations forbidden after the minting begins
     error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
-    error PricePaidIncorrect(); // Returned when underpaying
+    error Underpaid(uint256 paid, uint256 required); // Returned when underpaying
     error PaymentError(bool successA, bool successB); // Transfer error
 
     // =============================================================
@@ -85,7 +85,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         // Revert if underpaying
         unchecked {
             if (msg.value < _currentPrice_t6y() * amount)
-                revert PricePaidIncorrect();
+                revert Underpaid(msg.value, _currentPrice_t6y() * amount);
         }
         // Finally, mint the tokens
         _mint_Ei7(amount);

@@ -29,7 +29,7 @@ contract MockLDPMinter {
 
     // Custom errors
     error MaxMintsPerCallExceeded();
-    error PricePaidIncorrect();
+    error Underpaid(uint256 paid, uint256 required);
     error MintingNotStarted();
     error MintingAlreadyStarted();
 
@@ -45,7 +45,7 @@ contract MockLDPMinter {
         // Revert if underpaying
         unchecked {
             if (msg.value < currentPrice() * amount)
-                revert PricePaidIncorrect();
+                revert Underpaid(msg.value, currentPrice() * amount);
         }
         // Finally, mint the tokens
         // HERE WILL BE THE MINT CALL - THE LINKED ERC721 CONTRACT WILL SEND EVENTS

@@ -13,8 +13,8 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 /**
  * @dev Lucky Duck Pack NFT contract
  *
- * The world's first NFT art collection that offers unstoppable, sustainable, 
- * and lifetime returns, all managed by smart-contracts!
+ * The world's first NFT art collection that offers lifetime returns
+ * through decentralized and unstoppable creator fee sharing!
  *
  * Simply owning one or more tokens grants holders a proportional share
  * of the creator fees from all trades. This means that even without
@@ -55,23 +55,15 @@ contract LuckyDuckPack is
     // Keeps track of the total supply
     uint256 public totalSupply;
     // Final provenance hash - hardcoded for transparency
-    string public constant PROVENANCE = "REPLACE_ME";
-    // Provenance timestamp
+    string public constant PROVENANCE = "a10f0c8e99734955d7ff53ac815a1d95aa1daa413e1d6106cb450d584c632b0b";
+    // When the provenance record was stored in the smart-contract
     uint256 public immutable PROVENANCE_TIMESTAMP;
-    // URIs - hardcoded for efficiency and transparency
+    // Where the unrevealed token data is stored
     string private constant _UNREVEALED_URI = "REPLACE_ME";
-    string private constant _CONTRACT_URI = "REPLACE_ME";
-    // Base URI - to be set before minting (by calling {initialize})
-    string private _baseURI_IPFS;
-    string private _baseURI_AR;
-    /**
-     * @notice What if IPFS or Arweave experiences downtime or becomes
-     * inaccessible? Although it's highly unlikely, one can never be too sure.
-     * That's why I have stored the NFT collection's off-chain data on both
-     * platforms as a precaution. The variable, when set to True, directs
-     * the contract to retrieve the off-chain data from Arweave instead of IPFS.
-     */
-    bool public usingArweaveBackup;
+    // Location where the collection information is stored
+    string private _contract_URI;
+    // Location prefix for token metadata (and images)
+    string private _base_URI;
     // Minter contract address
     address public minterContract;
     // Whether the reveal randomness has been already requested to Chainlink
@@ -136,19 +128,19 @@ contract LuckyDuckPack is
     );
 
     /**
-     * @dev Returned when a function reserved to the minter is called by a different address.
+     * @dev Error returned when the mint function is called by a different address than the minter contract.
      */
     error CallerIsNoMinter();
 
     /**
-     * @dev Returned when one or more of the initializer function parameters are empty/zero.
+     * @dev Error returned when one or more function parameters are empty/zero.
      */
     error EmptyInput(uint256 index);
 
     /**
-     * @dev Returned when attempting to mint over the max supply.
+     * @dev Error returned when attempting to mint over the max supply.
      */
-    error MaxSupplyExceeded();
+    error MaxSupplyExceeded(uint256 excess);
 
     // =============================================================
     //                       MAIN FUNCTIONS
@@ -166,7 +158,7 @@ contract LuckyDuckPack is
         unchecked{ // Can be unchecked because the minter contract restricts amount to be <= 10
             supplyAfter = supplyBefore + amount;
         }
-        if(supplyAfter > MAX_SUPPLY) revert MaxSupplyExceeded();
+        if(supplyAfter > MAX_SUPPLY) revert MaxSupplyExceeded(supplyAfter - MAX_SUPPLY);
         for(uint256 nextId = supplyBefore; nextId < supplyAfter;){
             _safeMint(account, nextId);
             unchecked{++nextId;}
@@ -177,28 +169,28 @@ contract LuckyDuckPack is
     /**
      * @notice This is the only function restricted to admin, and admin keys
      * are automatically burned when called. The function does the following:
-     * store Minter contract address; set Rewarder contract address as
-     * royalty receiver; set the Base URI; finally, burn the admin keys.
+     * store Minter contract address; set Rewarder contract address as royalty
+     * receiver; set the Base URI and Contract URI; finally, burn the admin keys.
      * As admin keys are burnt, all the data set by this function becomes
      * effectively immutable.
      */
     function initialize(
         address minterAddress,
         address rewarderAddress,
-        string calldata baseURI_IPFS,
-        string calldata baseURI_AR
+        string calldata contract_URI,
+        string calldata base_URI
     ) external onlyOwner {
         // Input checks
         if(minterAddress==address(0)) revert EmptyInput(0);
         if(rewarderAddress==address(0)) revert EmptyInput(1);
-        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(2);
-        if(bytes(baseURI_AR).length==0) revert EmptyInput(3);
-        // Check if the contract has LINK tokens (required for collection reveal)
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK token for reveal");
+        if(bytes(contract_URI).length==0) revert EmptyInput(2);
+        if(bytes(base_URI).length==0) revert EmptyInput(3);
+        // Make sure that the contract has enough LINK tokens for collection reveal
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
         // Store data
         minterContract = minterAddress;
-        _baseURI_IPFS = baseURI_IPFS;
-        _baseURI_AR = baseURI_AR;
+        _contract_URI = contract_URI;
+        _base_URI = base_URI;
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
         // Burn admin keys
         renounceOwnership();
@@ -220,6 +212,7 @@ contract LuckyDuckPack is
 
     /**
      * @notice Callback function used by Chainlink VRF (for collection reveal).
+     * Only Chainlink has permissions to call it.
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness)
         internal
@@ -230,16 +223,6 @@ contract LuckyDuckPack is
         revealOffset = randomOffset == 0 ? 1 : randomOffset; // Offset cannot be zero
         revealTimestamp = block.timestamp;
         emit RevealFulfilled(requestId, revealOffset);
-    }
-
-    /**
-     * @notice Change the location from which the offchain data is fetched
-     * (IPFS / Arweave). If both locations are reachable, calling this has
-     * basically no effect. This function is unlikely to be useful, ever.
-     * But, better safe than sorry.
-     */
-    function toggleOffchainDataLocation() external {
-        usingArweaveBackup = !usingArweaveBackup;
     }
 
     /**
@@ -254,8 +237,8 @@ contract LuckyDuckPack is
     /**
      * @notice Return the contract metadata URI.
      */
-    function contractURI() public pure returns (string memory) {
-        return _CONTRACT_URI;
+    function contractURI() public view returns (string memory) {
+        return _contract_URI;
     }
 
     /**
@@ -266,7 +249,7 @@ contract LuckyDuckPack is
         require(_exists(id), "URI query for nonexistent token"); // Ensure that the token exists.
         return
             _isRevealed() // If revealed,
-                ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
+                ? string(abi.encodePacked(_base_URI, revealedId(id).toString())) // return baseURI+revealedId,
                 : _UNREVEALED_URI; // otherwise return the unrevealedURI.
     }
 
@@ -275,14 +258,6 @@ contract LuckyDuckPack is
      */
     function _isRevealed() private view returns (bool) {
         return revealOffset != 0;
-    }
-
-    /**
-     * @dev Return either Arweave or IPFS baseURI depending on the
-     * value of "usingArweaveBackup".
-     */
-    function _actualBaseURI() private view returns (string memory) {
-        return usingArweaveBackup ? _baseURI_AR : _baseURI_IPFS;
     }
 
     // =============================================================
