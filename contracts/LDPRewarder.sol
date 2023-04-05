@@ -9,18 +9,21 @@ import "./lib/tools/WethUnwrapper.sol";
 
 /**
  * @dev Lucky Duck Pack Rewarder
- *
+ * 
  * This contract receives 100% of the creator fees from LDP trades.
  * Whenever funds are received, a portion is set aside for each LDP token;
- * token owners can claim their earnings at any moment by calling {cashout}.
+ * token owners can claim their cut at any moment by calling {cashout}.
  *
  * The contract reserves 6.25% of the earnings for the collection creator, with
  * the remaining 93.75% going to token holders proportionally to the number of
  * tokens they own.
  *
- * The earnings are tied to the tokens, not to the holder addresses, meaning that
- * if an NFT is sold or transferred without claiming its earnings first, the new
- * owner will have the right to do so.
+ * No staking, nor other actions, are required: own your token, claim
+ * your earnings - it's THAT simple.
+ *
+ * Important: The earnings are tied to the tokens, not to the holder addresses,
+ * meaning that if an NFT is sold or transferred without claiming its earnings
+ * first, the new owner will have the right to do so.
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
  * are received in other currencies, a separate set of functions to manually
@@ -28,7 +31,7 @@ import "./lib/tools/WethUnwrapper.sol";
  *
  * This contract is fair, unstoppable, unpausable, immutable: the admin only has
  * the authority to change the creator cashout address, but has no access to the
- * contract's liquidity or funds earned by NFT holders.
+ * earnings shared with the NFT holders.
  */
 contract LDPRewarder is Ownable, ReentrancyGuard {
 

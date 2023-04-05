@@ -5,10 +5,11 @@
 const fs = require("fs");
 
 // Source database files to be processed and combined
-//const sourceFile = "C:/Users/valer/Desktop/LuckyDuckPack_generative/build/json/_metadata_IPFS.json";
-const hashFile = "C:/Users/valer/Desktop/hashes.json";
+//old/const sourceFile = "C:/Users/valer/Desktop/LuckyDuckPack_generative/build/json/_metadata_IPFS.json";
+//const hashFile = "C:/Users/valer/Desktop/hashes.json";
+const sourceFile = "C:/Users/valer/OneDrive/Documents/GitHub/luckyDucksPack/misc/NFT_metadata/_metadata_AR.json";
 
-//const destPath = "C:/Users/valer/Desktop/LuckyDuckPack_generative/build/json/_metadata_hashes_IPFS.json";
+const destPath = "C:/Users/valer/Desktop/LuckyDuckPack_generative/_metadata_hashes_AR.json";
 
 function addValue(database){
     var updated = JSON.parse(
@@ -67,27 +68,29 @@ function truncateDatabase(database, amount){
     return database.slice(0, amount);
 }
 
-//data = require(sourceFile);
-hashes = require(hashFile);
-/*let newData = [];
+data = require(sourceFile);
+//hashes = require(hashFile);
+let newData = [];
 for(let x=0; x<data.length; ++x){
     let tempData = JSON.stringify(data[x]);
-    let hash = hashes[x];
-    let manipData = tempData.replace('.png",', '.png","image_file_hash":"'+hash+'",');
+    //let hash = hashes[x];
+    //old/let manipData = tempData.replace('.png",', '.png","image_file_hash":"'+hash+'",');
+    //let manipData = tempData.replace('.png",', '.png","image_alternative_location":"ARWEAVEMANIFEST/'+x+'.png",');
+    let manipData = tempData.replace('.png","image_alternative_location":"ipfs://bafybeicjl7jihwko5xjm4ehxqusugcuofd2vfepxv6ya6lfc5toviafvfu/'+x+'.png",', '.png",');
     //if(x==0) console.log(tempData);
     //if(x==0) console.log(manipData);
     newData.push(JSON.parse(manipData));
-}*/
-/////////console.log(data[0]);
-/////////console.log("---------------");
-/////////console.log(newData[0]);
-
-/////////fs.writeFileSync(destPath, JSON.stringify(newData, null, "  "));
-let concatHashes = "";
-for(let x=0; x<10000; ++x){
-    concatHashes+=hashes[x];
 }
-console.log(concatHashes);
+console.log(data[0]);
+console.log("---------------");
+console.log(newData[0]);
+
+fs.writeFileSync(destPath, JSON.stringify(newData, null, "  "));
+//let concatHashes = "";
+//for(let x=0; x<10000; ++x){
+//    concatHashes+=hashes[x];
+//}
+//console.log(concatHashes);
 
 /*function processAllAndExport(){
     let allData = processAllEditions();

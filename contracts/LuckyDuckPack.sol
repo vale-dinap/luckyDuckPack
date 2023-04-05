@@ -13,19 +13,6 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 /**
  * @dev Lucky Duck Pack NFT contract
  *
- * The world's first NFT art collection that offers lifetime returns
- * through decentralized and unstoppable creator fee sharing!
- *
- * Simply owning one or more tokens grants holders a proportional share
- * of the creator fees from all trades. This means that even without
- * selling your own token, you can still receive lifetime earnings from
- * the trading of other tokens!
- *
- * The creator fee revenues are sent to a 'Rewarder' contract, which NFT
- * holders can access at any time to withdraw their share of earnings.
- * No staking, nor other actions, are required: own your token, claim
- * your earnings - it's THAT simple.
- *
  * Commercial rights: As long as you own a Lucky Duck Pack NFT, you are
  * granted an unlimited, worldwide, non-exclusive, royalty-free license to
  * use, reproduce, and display the underlying artwork for commercial purposes,
@@ -63,7 +50,18 @@ contract LuckyDuckPack is
     // Location where the collection information is stored
     string private _contract_URI;
     // Location prefix for token metadata (and images)
-    string private _base_URI;
+    string private _baseURI_IPFS; // IPFS
+    string private _baseURI_AR; // Arweave
+    /**
+     * @notice What if the data stored on IPFS or Arweave or becomes
+     * inaccessible? Although it's unlikely, one can never be too sure.
+     * That's why we have stored the NFT collection's off-chain data on both
+     * networks as a precaution. This variable, when set to True, directs
+     * the contract to retrieve the off-chain data from Arweave instead of IPFS.
+     */
+    bool public useArweaveUri;
+    // Deployer address
+    address public deployer;
     // Minter contract address
     address public minterContract;
     // Whether the reveal randomness has been already requested to Chainlink
@@ -108,6 +106,7 @@ contract LuckyDuckPack is
         )
     {
         PROVENANCE_TIMESTAMP = block.timestamp;
+        deployer = msg.sender;
     }
 
     // =============================================================
@@ -178,22 +177,49 @@ contract LuckyDuckPack is
         address minterAddress,
         address rewarderAddress,
         string calldata contract_URI,
-        string calldata base_URI
+        string calldata baseURI_IPFS
     ) external onlyOwner {
         // Input checks
         if(minterAddress==address(0)) revert EmptyInput(0);
         if(rewarderAddress==address(0)) revert EmptyInput(1);
         if(bytes(contract_URI).length==0) revert EmptyInput(2);
-        if(bytes(base_URI).length==0) revert EmptyInput(3);
+        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(3);
         // Make sure that the contract has enough LINK tokens for collection reveal
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
         // Store data
         minterContract = minterAddress;
         _contract_URI = contract_URI;
-        _base_URI = base_URI;
+        _baseURI_IPFS = baseURI_IPFS;
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
         // Burn admin keys
         renounceOwnership();
+    }
+
+    /**
+     * @notice Change the location from which the offchain data is fetched
+     * (IPFS / Arweave). If both locations are reachable, calling this has
+     * basically no effect. This function is only useful if case the data
+     * becomes unavailable/unreachable on one of the two networks.
+     * For security reasons, only the contract deployer is allowed to use
+     * this toggle.
+     * Better safe than sorry.
+     */
+    function toggleArweaveUri() external {
+        require(msg.sender == deployer, "Permission denied.");
+        useArweaveUri = !useArweaveUri;
+    }
+
+    /**
+     * @notice Set the baseURI of the alternative location where the offchain
+     * data is stored (Arweave).
+     * If already set, the function reverts, so it can be called only once.
+     * For security reasons, only the contract deployer is allowed to call this
+     * function.
+     */
+    function setArweaveBaseUri(string calldata baseURI_AR) external {
+        require(msg.sender == deployer, "Permission denied.");
+        require(bytes(_baseURI_AR).length==0, "Override denied.");
+        _baseURI_AR = baseURI_AR;
     }
 
     /**
@@ -249,7 +275,7 @@ contract LuckyDuckPack is
         require(_exists(id), "URI query for nonexistent token"); // Ensure that the token exists.
         return
             _isRevealed() // If revealed,
-                ? string(abi.encodePacked(_base_URI, revealedId(id).toString())) // return baseURI+revealedId,
+                ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
                 : _UNREVEALED_URI; // otherwise return the unrevealedURI.
     }
 
@@ -258,6 +284,14 @@ contract LuckyDuckPack is
      */
     function _isRevealed() private view returns (bool) {
         return revealOffset != 0;
+    }
+
+    /**
+     * @dev Return either Arweave or IPFS baseURI depending on the
+     * value of "useArweaveUri".
+     */
+    function _actualBaseURI() private view returns (string memory) {
+        return useArweaveUri ? _baseURI_AR : _baseURI_IPFS;
     }
 
     // =============================================================
