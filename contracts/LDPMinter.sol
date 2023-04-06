@@ -73,6 +73,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     //                        CONSTRUCTOR
     // =============================================================
 
+    /**
+     * @dev Store the NFT contract address; store the Rewarder contract address;
+     * initialize the creator address.
+     * @param nftContract The address of the LuckyDuckPack NFT contract
+     * @param rewarderAddress The address of the LuckyDuckPack Rewarder contract
+     * @param creatorAddress The creator's address
+     */
     constructor(
         address nftContract,
         address rewarderAddress,

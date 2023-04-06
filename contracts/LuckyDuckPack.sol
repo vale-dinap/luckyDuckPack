@@ -99,6 +99,10 @@ contract LuckyDuckPack is
     //                         CONSTRUCTOR
     // =============================================================
 
+    /**
+     * @dev Initialize the VRF module to work with Chainlink;
+     * store the deployer's address; set the provenance timestamp.
+     */
     constructor()
         VRFConsumerBase(
             VRFcoordinator, // Chainlink VRF Coordinator

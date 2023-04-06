@@ -78,9 +78,10 @@ contract LDPRewarder is ReentrancyGuard {
     // =============================================================
 
     /**
-     * @dev Initialize the creator address;
-     * store the NFT contract address;
+     * @dev Initialize the creator address; store the NFT contract address;
      * initialize the WETH unwrapper contract.
+     * @param nftAddress The address of the LuckyDuckPack NFT contract
+     * @param creatorAddress The creator's address
      */
     constructor(address nftAddress, address creatorAddress) {
         _creator = creatorAddress;
