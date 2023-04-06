@@ -45,12 +45,12 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     uint256 private constant _PRICE3 = 2.3 ether; // From 6667 to 10000
     // Number of tokens reserved to the team
     uint256 private constant _TEAM_RESERVED = 30;
+    // Instance of the token contract
+    ILDP public immutable NFT;
+    // LDP Rewarder contract address
+    address public immutable REWARDER_ADDRESS;
     // When the admin sets this to 'true', minting is enabled and cannot be reverted back to 'false'
     bool public mintingStarted;
-    // Instance of the token contract
-    ILDP public nft;
-    // LDP Rewarder contract address
-    address public rewarder;
     // Creator
     address private creator;
     // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
@@ -68,6 +68,20 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
     error Underpaid(uint256 paid, uint256 required); // Returned when underpaying
     error PaymentError(bool successA, bool successB); // Transfer error
+
+    // =============================================================
+    //                        CONSTRUCTOR
+    // =============================================================
+
+    constructor(
+        address nftContract,
+        address rewarderAddress,
+        address creatorAddress
+    ){
+        NFT = ILDP(nftContract);
+        REWARDER_ADDRESS = rewarderAddress;
+        creator = creatorAddress;
+    }
 
     // =============================================================
     //                         FUNCTIONS
@@ -92,32 +106,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Link the Minter to the the NFT contract and the Rewarder
-     * contract; also sets the creator address; this function can be
-     * called only by the admin, and only until the minting hasn't started.
-     */
-    function initializeContract(
-        address nftAddr,
-        address rewarderAddr,
-        address creatorAddr
-    ) external onlyOwner {
-        if (mintingStarted) revert MintingAlreadyStarted();
-        if (rewarderAddr == address(0)) revert InputIsZero();
-        if (creatorAddr == address(0)) revert InputIsZero();
-        if (nftAddr == address(0)) revert InputIsZero();
-        nft = ILDP(nftAddr);
-        rewarder = rewarderAddr;
-        creator = creatorAddr;
-    }
-
-    /**
      * @notice Enable minting and mint [_TEAM_RESERVED] tokens to admin's
      * address. Some of these tokens will be used for giveaways, the rest
      * will be gifted to the team.
      * @dev This function can be called only once, so admin won't be able to
      * mint more than [_TEAM_RESERVED] free tokens.
      */
-    function initializeMinting() external onlyOwner {
+    function startMinting() external onlyOwner {
         if (mintingStarted) revert MintingAlreadyStarted();
         mintingStarted = true;
         _mint_Ei7(_TEAM_RESERVED);
@@ -137,7 +132,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function mintableSupply() external view returns (uint256 supply) {
         unchecked {
-            supply = nft.MAX_SUPPLY() - nft.totalSupply();
+            supply = NFT.MAX_SUPPLY() - NFT.totalSupply();
         }
     }
 
@@ -156,7 +151,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         if (!mintingStarted) revert MintingNotStarted();
         if (_msgSender() != owner())
             require(_msgSender() == creator, "Caller is not admin nor creator");
-        uint256 currentSupply = nft.totalSupply();
+        uint256 currentSupply = NFT.totalSupply();
         uint256 newSales = currentSupply - supplyAtLastWithdraw;
         supplyAtLastWithdraw = currentSupply; // Storage variable update
         // Actual withdraw
@@ -178,8 +173,8 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function emergencyWithdraw() external onlyOwner {
         // Revert if the function is called before the minting process ends
-        uint256 currentSupply = nft.totalSupply();
-        require(currentSupply == nft.MAX_SUPPLY(), "Minting still in progress");
+        uint256 currentSupply = NFT.totalSupply();
+        require(currentSupply == NFT.MAX_SUPPLY(), "Minting still in progress");
         // Attempt the normal withdraw first: if succeeds, emergency actions won't be performed
         uint256 newSales = currentSupply - supplyAtLastWithdraw;
         supplyAtLastWithdraw = currentSupply;
@@ -199,14 +194,14 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Mint `amount` tokens to sender address.
      */
     function _mint_Ei7(uint256 amount) private {
-        nft.mint_Qgo(msg.sender, amount);
+        NFT.mint_Qgo(msg.sender, amount);
     }
 
     /**
      * @dev Returns the current price (depending on the remaining supply).
      */
     function _currentPrice_t6y() private view returns (uint256) {
-        uint256 curSupply = nft.totalSupply();
+        uint256 curSupply = NFT.totalSupply();
         if (curSupply < 3334) return _PRICE1;
         else if (curSupply < 6667) return _PRICE2;
         else return _PRICE3;
@@ -224,7 +219,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         uint256 _bal = address(this).balance;
         if (totalIncentives < _bal) {
             uint256 creatorProceeds = _bal - totalIncentives;
-            (rewarderPaid, ) = rewarder.call{value: totalIncentives}("");
+            (rewarderPaid, ) = REWARDER_ADDRESS.call{value: totalIncentives}("");
             (creatorPaid, ) = creator.call{value: creatorProceeds}("");
         }
     }

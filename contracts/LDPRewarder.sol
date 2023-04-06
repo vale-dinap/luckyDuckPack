@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./lib/interfaces/ILDP.sol";
@@ -29,11 +28,11 @@ import "./lib/tools/WethUnwrapper.sol";
  * are received in other currencies, a separate set of functions to manually
  * process/cashout any ERC20 token is provided.
  *
- * This contract is fair, unstoppable, unpausable, immutable: the admin only has
- * the authority to change the creator cashout address, but has no access to the
- * earnings shared with the NFT holders.
+ * This contract is fair, unstoppable, unpausable, immutable: there is no admin
+ * role, while the Creator has only the authority to change their cashout address
+ * but has no access to the earnings shared with the NFT holders.
  */
-contract LDPRewarder is Ownable, ReentrancyGuard {
+contract LDPRewarder is ReentrancyGuard {
 
     // =============================================================
     //                        CUSTOM TYPES
@@ -62,12 +61,14 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // Track the processed ERC20 revenues to identify funds received since last records update
     mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
 
-    // ID representing the creator within the mapping "lifetimeCollected"
-    uint256 private constant _CREATOR_ID = 31415926535;
     // Creator address - only for cashout: creator has no special permissions
     address private _creator;
+    // Used to transfer the creator status to a new address
+    address private _creatorCandidate;
+    // ID representing the creator within the mapping "lifetimeCollected"
+    uint256 private constant _CREATOR_ID = 31415926535;
     // Lucky Duck Pack NFT contract
-    ILDP public nft;
+    ILDP public immutable NFT;
     // WETH token address and WETH Unwrapper contract
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     WethUnwrapper private immutable wethUnwrapper;
@@ -77,12 +78,13 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     // =============================================================
 
     /**
-     * @dev Failsafe: set deployer as defult receiver of creator earnings
-     * (can be amended afterwards).
-     * Initialize the WETH unwrapper contract.
+     * @dev Initialize the creator address;
+     * store the NFT contract address;
+     * initialize the WETH unwrapper contract.
      */
-    constructor() {
-        _creator = msg.sender;
+    constructor(address nftAddress, address creatorAddress) {
+        _creator = creatorAddress;
+        NFT = ILDP(nftAddress);
         wethUnwrapper = new WethUnwrapper(WETH);
     }
 
@@ -146,7 +148,7 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      * @dev Makes functions revert if the caller doesn't own the NFT `tokenId`.
      */
     modifier onlyTokenOwner(uint256 tokenId) {
-        if (msg.sender != nft.ownerOf(tokenId))
+        if (msg.sender != NFT.ownerOf(tokenId))
             revert SenderIsNoTokenOwner(tokenId);
         _;
     }
@@ -254,11 +256,11 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         view
         returns (uint256 accruedRevenues)
     {
-        uint256 numOwned = nft.balanceOf(account);
+        uint256 numOwned = NFT.balanceOf(account);
         for (uint256 i; i < numOwned; ) {
             accruedRevenues += _getNftRevenues_idw(
                 _revenues,
-                nft.tokenOfOwnerByIndex(account, i)
+                NFT.tokenOfOwnerByIndex(account, i)
             );
             unchecked {++i;}
         }
@@ -279,11 +281,11 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     {
         if (tokenAddress == WETH) return 0;
         else {
-            uint256 numOwned = nft.balanceOf(account);
+            uint256 numOwned = NFT.balanceOf(account);
             for (uint256 i; i < numOwned; ) {
                 accruedRevenues += _getNftRevenues_idw(
                     _erc20Revenues[tokenAddress],
-                    nft.tokenOfOwnerByIndex(account, i)
+                    NFT.tokenOfOwnerByIndex(account, i)
                 );
                 unchecked {++i;}
             }
@@ -347,24 +349,29 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
     }
 
     // =============================================================
-    //                       ADMIN FUNCTIONS
+    //                     CREATOR TRANSFER
     // =============================================================
 
     /**
-     * @notice Link the token contract instance to the nft contract address.
-     * Can be set only once and becomes immutable afterwards.
+     * @notice Function that can be used by the Creator to change their
+     * address. In order to complete the change, the target address
+     * must then call {creatorTransferFulfill}.
+     * It is also possible to cancel a previous request by calling this
+     * function with address(0) as parameter.
      */
-    function setNftAddress(address nftAddr) external onlyOwner {
-        require(address(nft) == address(0), "Override denied");
-        nft = ILDP(nftAddr);
+    function creatorTransferRequest(address newAddress) external {
+        require(msg.sender == _creator, "Caller is not creator.");
+        _creatorCandidate = newAddress;
     }
 
     /**
-     * @notice Admin function to amend the creator address.
+     * @notice Function to complete the Creator address change.
+     * Check {creatorTransferRequest} for more info.
      */
-    function setCreatorAddress(address newAddress) external onlyOwner {
-        require(newAddress != address(0));
-        _creator = newAddress;
+    function creatorTransferFulfill() external {
+        require(msg.sender == _creatorCandidate, "Caller is not creator candidate.");
+        _creatorCandidate = address(0);
+        _creator = msg.sender;
     }
 
     // =============================================================
@@ -395,12 +402,12 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
      */
     function _accountCashout_dHm(address account) private {
         uint256 amount;
-        uint256 numOwned = nft.balanceOf(account);
+        uint256 numOwned = NFT.balanceOf(account);
         for (uint256 i; i < numOwned; ) {
             unchecked {
                 amount += _processWithdrawData_Il8(
                     _revenues,
-                    nft.tokenOfOwnerByIndex(account, i)
+                    NFT.tokenOfOwnerByIndex(account, i)
                 );
                 ++i;
             }
@@ -417,12 +424,12 @@ contract LDPRewarder is Ownable, ReentrancyGuard {
         private
     {
         uint256 amount;
-        uint256 numOwned = nft.balanceOf(account);
+        uint256 numOwned = NFT.balanceOf(account);
         for (uint256 i; i < numOwned; ) {
             unchecked {
                 amount += _processWithdrawData_Il8(
                     _erc20Revenues[tokenAddress],
-                    nft.tokenOfOwnerByIndex(account, i)
+                    NFT.tokenOfOwnerByIndex(account, i)
                 );
                 ++i;
             }

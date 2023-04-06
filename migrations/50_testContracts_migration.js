@@ -2,6 +2,8 @@ const tokenA = artifacts.require("CustomERC20A");
 const tokenB = artifacts.require("CustomERC20B");
 const link = artifacts.require("Link");
 const VRF = artifacts.require("VRFCoordinator");
+const LuckyDuckPack = artifacts.require("LuckyDuckPackTest");
+
 
 module.exports = async (deployer, network) => {
 
