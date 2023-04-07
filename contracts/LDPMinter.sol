@@ -44,17 +44,17 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     uint256 private constant _PRICE2 = 1.8 ether; // From 3334 to 6666
     uint256 private constant _PRICE3 = 2.3 ether; // From 6667 to 10000
     // Number of tokens reserved to the team
-    uint256 private constant _TEAM_RESERVED = 30;
+    uint256 private constant _TEAM_RESERVED = 35;
     // Instance of the token contract
     ILDP public immutable NFT;
     // LDP Rewarder contract address
     address public immutable REWARDER_ADDRESS;
-    // When the admin sets this to 'true', minting is enabled and cannot be reverted back to 'false'
-    bool public mintingStarted;
     // Creator
-    address private creator;
+    address private _creator;
     // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
-    uint256 private supplyAtLastWithdraw = _TEAM_RESERVED; // Start at [_TEAM_RESERVED] (as these won't be paid)
+    uint256 private _supplyAtLastWithdraw = _TEAM_RESERVED; // Start at [_TEAM_RESERVED] (as these won't be paid)
+    // When the admin sets this to 'true', minting is enabled (and cannot be disabled)
+    bool public mintingStarted;
 
     // =============================================================
     //                  CUSTOM ERRORS AND EVENTS
@@ -64,7 +64,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
 
     error InputIsZero(); // When using address(0) as function parameter
     error MintingNotStarted(); // Attempting to mint before [mintingStarted] is enabled
-    error MintingAlreadyStarted(); // Attempting operations forbidden after the minting begins
+    error MintingAlreadyStarted(); // Calling {startMinting} while minting has already started
     error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
     error Underpaid(uint256 paid, uint256 required); // Returned when underpaying
     error PaymentError(bool successA, bool successB); // Transfer error
@@ -87,7 +87,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     ){
         NFT = ILDP(nftContract);
         REWARDER_ADDRESS = rewarderAddress;
-        creator = creatorAddress;
+        _creator = creatorAddress;
     }
 
     // =============================================================
@@ -131,7 +131,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function setCreatorAddress(address creatorAddr) external onlyOwner {
         if (creatorAddr == address(0)) revert InputIsZero();
-        creator = creatorAddr;
+        _creator = creatorAddr;
     }
 
     /**
@@ -157,10 +157,10 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     function withdrawProceeds() external {
         if (!mintingStarted) revert MintingNotStarted();
         if (_msgSender() != owner())
-            require(_msgSender() == creator, "Caller is not admin nor creator");
+            require(_msgSender() == _creator, "Caller is not admin nor creator");
         uint256 currentSupply = NFT.totalSupply();
-        uint256 newSales = currentSupply - supplyAtLastWithdraw;
-        supplyAtLastWithdraw = currentSupply; // Storage variable update
+        uint256 newSales = currentSupply - _supplyAtLastWithdraw;
+        _supplyAtLastWithdraw = currentSupply; // Storage variable update
         // Actual withdraw
         (bool creatorPaid, bool rewarderPaid) = _processWithdraw_ama(newSales);
         // Revert if one or both payments failed
@@ -183,8 +183,8 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         uint256 currentSupply = NFT.totalSupply();
         require(currentSupply == NFT.MAX_SUPPLY(), "Minting still in progress");
         // Attempt the normal withdraw first: if succeeds, emergency actions won't be performed
-        uint256 newSales = currentSupply - supplyAtLastWithdraw;
-        supplyAtLastWithdraw = currentSupply;
+        uint256 newSales = currentSupply - _supplyAtLastWithdraw;
+        _supplyAtLastWithdraw = currentSupply;
         (bool creatorPaid, bool rewarderPaid) = _processWithdraw_ama(newSales);
         // If one of the two payments failed, send the remaining balance to admin
         if (!(creatorPaid && rewarderPaid)) {
@@ -220,7 +220,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         if (totalIncentives < _bal) {
             uint256 creatorProceeds = _bal - totalIncentives;
             (rewarderPaid, ) = REWARDER_ADDRESS.call{value: totalIncentives}("");
-            (creatorPaid, ) = creator.call{value: creatorProceeds}("");
+            (creatorPaid, ) = _creator.call{value: creatorProceeds}("");
         }
     }
 }
