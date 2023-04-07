@@ -61,7 +61,7 @@ contract LuckyDuckPackTest is
      */
     bool public useArweaveUri;
     // Deployer address
-    address public deployer;
+    address public immutable DEPLOYER;
     // Minter contract address
     address public minterContract;
     // Whether the reveal randomness has been already requested to Chainlink
@@ -107,7 +107,7 @@ contract LuckyDuckPackTest is
     {
         VRFcoordinator = _VRFcoordinator;
         PROVENANCE_TIMESTAMP = block.timestamp;
-        deployer = msg.sender;
+        DEPLOYER = msg.sender;
     }
 
     // =============================================================
@@ -206,7 +206,7 @@ contract LuckyDuckPackTest is
      * Better safe than sorry.
      */
     function toggleArweaveUri() external {
-        require(msg.sender == deployer, "Permission denied.");
+        require(msg.sender == DEPLOYER, "Permission denied.");
         useArweaveUri = !useArweaveUri;
     }
 
@@ -218,7 +218,7 @@ contract LuckyDuckPackTest is
      * function.
      */
     function setArweaveBaseUri(string calldata baseURI_AR) external {
-        require(msg.sender == deployer, "Permission denied.");
+        require(msg.sender == DEPLOYER, "Permission denied.");
         require(bytes(_baseURI_AR).length==0, "Override denied.");
         _baseURI_AR = baseURI_AR;
     }

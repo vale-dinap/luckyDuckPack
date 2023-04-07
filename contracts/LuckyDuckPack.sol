@@ -45,6 +45,8 @@ contract LuckyDuckPack is
     string public constant PROVENANCE = "a10f0c8e99734955d7ff53ac815a1d95aa1daa413e1d6106cb450d584c632b0b";
     // When the provenance record was stored in the smart-contract
     uint256 public immutable PROVENANCE_TIMESTAMP;
+    // Deployer address
+    address public immutable DEPLOYER;
     // Where the unrevealed token data is stored
     string private constant _UNREVEALED_URI = "REPLACE_ME";
     // Location where the collection information is stored
@@ -60,8 +62,6 @@ contract LuckyDuckPack is
      * the contract to retrieve the off-chain data from Arweave instead of IPFS.
      */
     bool public useArweaveUri;
-    // Deployer address
-    address public deployer;
     // Minter contract address
     address public minterContract;
     // Whether the reveal randomness has been already requested to Chainlink
@@ -110,7 +110,7 @@ contract LuckyDuckPack is
         )
     {
         PROVENANCE_TIMESTAMP = block.timestamp;
-        deployer = msg.sender;
+        DEPLOYER = msg.sender;
     }
 
     // =============================================================
@@ -209,7 +209,7 @@ contract LuckyDuckPack is
      * Better safe than sorry.
      */
     function toggleArweaveUri() external {
-        require(msg.sender == deployer, "Permission denied.");
+        require(msg.sender == DEPLOYER, "Permission denied.");
         useArweaveUri = !useArweaveUri;
     }
 
@@ -221,7 +221,7 @@ contract LuckyDuckPack is
      * function.
      */
     function setArweaveBaseUri(string calldata baseURI_AR) external {
-        require(msg.sender == deployer, "Permission denied.");
+        require(msg.sender == DEPLOYER, "Permission denied.");
         require(bytes(_baseURI_AR).length==0, "Override denied.");
         _baseURI_AR = baseURI_AR;
     }

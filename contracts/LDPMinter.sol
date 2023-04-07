@@ -109,7 +109,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
                 revert Underpaid(msg.value, _currentPrice_t6y() * amount);
         }
         // Finally, mint the tokens
-        _mint_Ei7(amount);
+        NFT.mint_Qgo(msg.sender, amount);
     }
 
     /**
@@ -122,7 +122,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     function startMinting() external onlyOwner {
         if (mintingStarted) revert MintingAlreadyStarted();
         mintingStarted = true;
-        _mint_Ei7(_TEAM_RESERVED);
+        NFT.mint_Qgo(msg.sender, _TEAM_RESERVED);
         emit MintingStarted();
     }
 
@@ -196,13 +196,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // =============================================================
     //                      PRIVATE FUNCTIONS
     // =============================================================
-
-    /**
-     * @dev Mint `amount` tokens to sender address.
-     */
-    function _mint_Ei7(uint256 amount) private {
-        NFT.mint_Qgo(msg.sender, amount);
-    }
 
     /**
      * @dev Returns the current price (depending on the remaining supply).
