@@ -202,8 +202,8 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function _currentPrice_t6y() private view returns (uint256) {
         uint256 curSupply = NFT.totalSupply();
-        if (curSupply < 3334) return _PRICE1;
-        else if (curSupply < 6667) return _PRICE2;
+        if (curSupply < 3333) return _PRICE1;
+        else if (curSupply < 6666) return _PRICE2;
         else return _PRICE3;
     }
 
