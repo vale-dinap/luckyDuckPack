@@ -160,7 +160,7 @@ contract LuckyDuckPackTest is
         }
         if(supplyAfter > MAX_SUPPLY) revert MaxSupplyExceeded(supplyAfter - MAX_SUPPLY);
         for(uint256 nextId = supplyBefore; nextId < supplyAfter;){
-            _safeMint(account, nextId);
+            _mint(account, nextId);
             unchecked{++nextId;}
         }
         totalSupply=supplyAfter;
