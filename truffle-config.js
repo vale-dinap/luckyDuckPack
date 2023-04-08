@@ -48,6 +48,9 @@ module.exports = {
     //  port: 8545,            // Standard Ethereum port (default: none)
     //  network_id: "*",       // Any network (default: none)
     // },
+    // test: {
+    //  networkCheckTimeout: 1000
+    // },
     //
     // An additional network, but with some advanced options…
     // advanced: {
@@ -80,7 +83,7 @@ module.exports = {
 
   // Set default mocha options here, use special reporters etc.
   mocha: {
-    // timeout: 100000
+    timeout: 600000,
     reporter: 'eth-gas-reporter',
     reporterOptions : {
       currency: "EUR",

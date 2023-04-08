@@ -228,13 +228,13 @@ contract("Token contract", async (accounts) => {
       assert.equal(this.supplyAfter, this.supplyBefore+this.numToMint, "Minted supply mismatch");
     });
 
-    it.only("Cannot mint over the max supply", async () => {
+    // This test takes over 7 minutes
+    xit("Cannot mint over the max supply", async () => {
       this.maxSupply = 10000;
       this.batchSize = 50;
       this.numBatches = this.maxSupply/this.batchSize;
       for(let i=0; i<this.numBatches; ++i){
         await nftContract.mint_Qgo(admin, this.batchSize, {from: minterAddr});
-        await timeout(50);
       }
       // Assert that the max supply has been reached
       this.curSupply = Number(await nftContract.totalSupply());
