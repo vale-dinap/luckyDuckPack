@@ -49,6 +49,7 @@ contract("Token contract", async (accounts) => {
       // Create contracts
       [VRFContract, linkContract] = await initChainlinkMocks(admin);
       [nftContract, minterContract, rewarderContract] = await initMainContracts(
+        10000,
         creator,
         payout,
         VRFContract.address,
@@ -91,6 +92,7 @@ contract("Token contract", async (accounts) => {
       // Create contracts
       [VRFContract, linkContract] = await initChainlinkMocks(admin);
       [nftContract, minterContract, rewarderContract] = await initMainContracts(
+        10000,
         creator,
         payout,
         VRFContract.address,
@@ -188,9 +190,11 @@ contract("Token contract", async (accounts) => {
   describe("Minting", function () {
 
     beforeEach(async function () {
+      maxSupply = 10000;
       // Create contracts
       [VRFContract, linkContract] = await initChainlinkMocks(admin);
       [nftContract, minterContract, rewarderContract] = await initMainContracts(
+        maxSupply,
         creator,
         payout,
         VRFContract.address,
@@ -228,17 +232,16 @@ contract("Token contract", async (accounts) => {
       assert.equal(this.supplyAfter, this.supplyBefore+this.numToMint, "Minted supply mismatch");
     });
 
-    // This test takes over 7 minutes
+    // This test can take up to 8 minutes with maxSupply==10000
     xit("Cannot mint over the max supply", async () => {
-      this.maxSupply = 10000;
       this.batchSize = 50;
-      this.numBatches = this.maxSupply/this.batchSize;
+      this.numBatches = maxSupply/this.batchSize;
       for(let i=0; i<this.numBatches; ++i){
         await nftContract.mint_Qgo(admin, this.batchSize, {from: minterAddr});
       }
       // Assert that the max supply has been reached
       this.curSupply = Number(await nftContract.totalSupply());
-      assert.equal(this.curSupply, this.maxSupply, "Max supply not reached");
+      assert.equal(this.curSupply, maxSupply, "Max supply not reached");
       // Assert it reverts by attempting to mint another token
       await expectRevertCustomError(
         LuckyDuckPack,
@@ -247,6 +250,81 @@ contract("Token contract", async (accounts) => {
       );
     });
 
+  });
+
+  describe("Token Enumeration", function () {
+    before(async function () {
+      maxSupply = 10000;
+      // Create contracts
+      [VRFContract, linkContract] = await initChainlinkMocks(admin);
+      [nftContract, minterContract, rewarderContract] = await initMainContracts(
+        maxSupply,
+        creator,
+        payout,
+        VRFContract.address,
+        linkContract.address
+      );
+      // Set a specific address as minter
+      minterAddr = accounts[7];
+      this.init_data = [
+        minterAddr,
+        rewarderContract.address,
+        "contractUri_string",
+        "baseUri_IPFS_string",
+      ];
+      // Initialize the contract
+      await linkContract.transfer(
+        nftContract.address,
+        revealFee,
+        { from: admin }
+      );
+      await nftContract.initialize(...this.init_data, {from: admin});
+    });
+
+    it("Tokens are correctly enumerated for each owner", async () => {
+      // Mint a few tokens
+      this.amountToMint = 3;
+      await nftContract.mint_Qgo(userA, this.amountToMint, {from: minterAddr});
+      // Gather the enumerated lists
+      this.tokensA = [];
+      for(let i=0; i<this.amountToMint; ++i){
+        this.tokensA[i] = await nftContract.tokenOfOwnerByIndex(userA, i);
+      }
+      // Check that the list is correct
+      this.balanceOfA = Number(await nftContract.balanceOf(userA));
+      assert.equal(this.tokensA.length, this.balanceOfA, "User A tokens array length doesn't match address balance");
+      for(let i=0; i<this.balanceOfA; ++i){
+        this.tokenOwner = await nftContract.ownerOf(this.tokensA[i]);
+        assert.equal(this.tokenOwner, userA, "Owner mismatch (token ID: "+this.tokensA[i].toString()+")");
+      }
+      // Transfer one token, check if the list is updated properly
+      this.tokenTransfered = this.tokensA[2];
+      await nftContract.safeTransferFrom(userA, userB, this.tokenTransfered, {from: userA});
+      this.newBalanceOfA = Number(await nftContract.balanceOf(userA));
+      this.newTokensOfA = [];
+      for(let i=0; i<this.newBalanceOfA; ++i){
+        this.newTokensOfA[i] = await nftContract.tokenOfOwnerByIndex(userA, i);
+      }
+      assert.equal(this.newTokensOfA.length, this.balanceOfA-1, "User A tokens list length incorrect after token transfer");
+      assert.notIncludeMembers(this.newTokensOfA, [this.tokenTransfered], "Transferred token still in the previous owner's enumerated list");
+    });
+  });
+
+  describe("Reveal", function () {
+    // Cannot reveal before the collection is fully minted
+    // Check if chainlink works
+    // Check revealedIds
+  });
+
+  describe("URI", function () {
+    // Also test ARWEAVE
+    // Ipfs
+    // UnrevealedUri
+    // Revealed URI
+  });
+
+  describe("Events", function () {
+    // Also test ARWEAVE
   });
 
 });

@@ -6,9 +6,9 @@ const Link = artifacts.require("Link");
 const ERC20TokenA = artifacts.require("CustomERC20A");
 const ERC20TokenB = artifacts.require("CustomERC20A");
 
-async function initMainContracts(creatorAddress, payoutAddress, VRFContractAddress, linkContractAddress) {
+async function initMainContracts(maxSupply, creatorAddress, payoutAddress, VRFContractAddress, linkContractAddress) {
     // LDP Token
-    nftContract = await LuckyDuckPack.new(VRFContractAddress, linkContractAddress);
+    nftContract = await LuckyDuckPack.new(VRFContractAddress, linkContractAddress, maxSupply);
     // LDP Rewarder
     rewarderContract = await LDPRewarder.new(nftContract.address, creatorAddress);
     // LDP Minter

@@ -38,7 +38,7 @@ contract LuckyDuckPackTest is
     // =============================================================
 
     // Supply cap
-    uint256 public constant MAX_SUPPLY = 10000;
+    uint256 public immutable MAX_SUPPLY;
     // Keeps track of the total supply
     uint256 public totalSupply;
     // Final provenance hash - hardcoded for transparency
@@ -99,7 +99,7 @@ contract LuckyDuckPackTest is
     //                         CONSTRUCTOR
     // =============================================================
 
-    constructor(address _VRFcoordinator, address _linkToken)
+    constructor(address _VRFcoordinator, address _linkToken, uint256 maxSupply)
         VRFConsumerBase(
             _VRFcoordinator, // Chainlink VRF Coordinator
             _linkToken // LINK Token
@@ -108,6 +108,7 @@ contract LuckyDuckPackTest is
         VRFcoordinator = _VRFcoordinator;
         PROVENANCE_TIMESTAMP = block.timestamp;
         DEPLOYER = msg.sender;
+        MAX_SUPPLY = maxSupply;
     }
 
     // =============================================================
