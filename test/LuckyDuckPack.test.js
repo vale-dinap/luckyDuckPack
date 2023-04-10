@@ -311,9 +311,58 @@ contract("Token contract", async (accounts) => {
   });
 
   describe("Reveal", function () {
-    // Cannot reveal before the collection is fully minted
+    beforeEach(async function () {
+      maxSupply = 50;
+      // Create contracts
+      [VRFContract, linkContract] = await initChainlinkMocks(admin);
+      [nftContract, minterContract, rewarderContract] = await initMainContracts(
+        maxSupply,
+        creator,
+        payout,
+        VRFContract.address,
+        linkContract.address
+      );
+      // Set a specific address as minter
+      minterAddr = accounts[7];
+      this.init_data = [
+        minterAddr,
+        rewarderContract.address,
+        "contractUri_string",
+        "baseUri_IPFS_string",
+      ];
+      // Initialize the contract
+      await linkContract.transfer(
+        nftContract.address,
+        revealFee,
+        { from: admin }
+      );
+      await nftContract.initialize(...this.init_data, {from: admin});
+    });
+
+    it("Cannot reveal before the collection is fully minted", async () => {
+      // Mint max supply minus 1
+      await nftContract.mint_Qgo(userA, maxSupply-1, {from: minterAddr});
+      // Assert that reveal reverts
+      await expectRevert(
+        nftContract.reveal(),
+        "Minting still in progress"
+      );
+    });
+
+    it.only("Can reveal when the collection is fully minted", async () => {
+      // Mint max supply
+      await nftContract.mint_Qgo(userA, maxSupply, {from: minterAddr});
+      // Assert that reveal passes
+      this.totalSupply = await nftContract.totalSupply();
+      assert.equal(this.totalSupply, maxSupply, "Collection not fully minted");
+      this.truffleReceipt = await nftContract.reveal();
+      await expectEvent(this.truffleReceipt, "RevealRequested");
+    });
+
     // Check if chainlink works
     // Check revealedIds
+    // Check events
+    // Reveal cannot be called more than once
   });
 
   describe("URI", function () {
