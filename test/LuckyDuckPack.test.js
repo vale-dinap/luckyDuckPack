@@ -349,19 +349,33 @@ contract("Token contract", async (accounts) => {
       );
     });
 
-    it.only("Can reveal when the collection is fully minted", async () => {
+    it("Can reveal when the collection is fully minted", async () => {
+      // Mock randomnes
+      this.randomness = 9;
       // Mint max supply
-      await nftContract.mint_Qgo(userA, maxSupply, {from: minterAddr});
+      await nftContract.mint_Qgo(userA, maxSupply, { from: minterAddr });
+      // Assert that the reveal hasn't been performed up to this point
+      await expectRevert(
+        nftContract.revealedId(0),
+        "Collection not revealed"
+      );
       // Assert that reveal passes
       this.totalSupply = await nftContract.totalSupply();
       assert.equal(this.totalSupply, maxSupply, "Collection not fully minted");
       this.truffleReceipt = await nftContract.reveal();
+      this.requestId = String(this.truffleReceipt.logs[0].args[0]);
       await expectEvent(this.truffleReceipt, "RevealRequested");
+      // Mock chainlink VRF callback
+      await VRFContract.callBackWithRandomness(
+        this.requestId,
+        this.randomness,
+        nftContract.address
+      );
+      // Assert that the revealed id is correct
+      this.testId = 5;
+      this.revealedId = await nftContract.revealedId(this.testId);
+      assert.equal(this.revealedId, this.testId+this.randomness, "Revealed Id mismatch");
     });
-
-    // Check if chainlink works
-    // Check revealedIds
-    // Check events
     // Reveal cannot be called more than once
   });
 

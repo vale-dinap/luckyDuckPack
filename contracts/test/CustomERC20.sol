@@ -28,15 +28,3 @@ contract CustomERC20B is ERC20PresetFixedSupply {
         )
     {}
 }
-
-contract Link is ERC20PresetFixedSupply {
-    constructor(
-        address tokenHolder
-    ) ERC20PresetFixedSupply(
-        "Link",
-        "LINK",
-        1000 * 10 ** 18,
-        tokenHolder
-        )
-    {}
-}

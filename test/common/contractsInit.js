@@ -2,7 +2,7 @@ const LuckyDuckPack = artifacts.require("LuckyDuckPackTest");
 const LDPMinter = artifacts.require("LDPMinter");
 const LDPRewarder = artifacts.require("LDPRewarder");
 const VRFCoordinator = artifacts.require("VRFCoordinator");
-const Link = artifacts.require("Link");
+const Link = artifacts.require("LinkToken");
 const ERC20TokenA = artifacts.require("CustomERC20A");
 const ERC20TokenB = artifacts.require("CustomERC20A");
 
