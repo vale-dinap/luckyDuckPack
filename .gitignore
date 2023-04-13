@@ -70,3 +70,4 @@ misc/
 # Misc
 .vscode
 *.docx
+bin/*
