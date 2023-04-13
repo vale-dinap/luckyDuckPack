@@ -376,7 +376,25 @@ contract("Token contract", async (accounts) => {
       this.revealedId = await nftContract.revealedId(this.testId);
       assert.equal(this.revealedId, this.testId+this.randomness, "Revealed Id mismatch");
     });
-    // Reveal cannot be called more than once
+
+    it("Reveal cannot be called more than once", async () => {
+      // Mock randomnes
+      this.randomness = 9;
+      // Mint max supply
+      await nftContract.mint_Qgo(userA, maxSupply, { from: minterAddr });
+      // Assert that the reveal hasn't been performed up to this point
+      await expectRevert(
+        nftContract.revealedId(0),
+        "Collection not revealed"
+      );
+      // Call the reveal function the first time
+      await nftContract.reveal();
+      // Call the second time, assert that fails
+      await expectRevert(
+        nftContract.reveal(),
+        "Reveal already requested"
+      );
+    });
   });
 
   describe("URI", function () {
