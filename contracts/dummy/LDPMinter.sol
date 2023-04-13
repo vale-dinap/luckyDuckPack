@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity 0.8.19;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 ///// MINTER DUMMY CONTRACT - ABI consistent with the production version - includes events/errors /////
