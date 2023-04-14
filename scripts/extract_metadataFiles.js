@@ -5,14 +5,14 @@ const fs = require("fs");
 require('dotenv').config();
 
 const sourceFile = process.env.TOKENMETADATA_DATABASE_LOCATION;
-const destPath = process.env.TOKENMETADATA_DESTINATION_PATH;
+const destPath = process.env.EXTRACTEDMETADATA_DESTINATION_PATH;
 
 function extractFiles (source, destPath) {
 
     const data = require(source);
 
     for(let i=0; i<data.length; ++i){
-        let edition = data[i].token_id;
+        let edition = data[i].edition;
         fs.writeFileSync(destPath+edition, JSON.stringify(data[i], null, "  "));
     }
 }

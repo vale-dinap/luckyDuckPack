@@ -6,10 +6,10 @@ const fs = require("fs");
 
 // Source database files to be processed and combined
 //old/const sourceFile = "C:/Users/valer/Desktop/LuckyDuckPack_generative/build/json/_metadata_IPFS.json";
-//const hashFile = "C:/Users/valer/Desktop/hashes.json";
-const sourceFile = "C:/Users/valer/OneDrive/Documents/GitHub/luckyDucksPack/misc/NFT_metadata/_metadata_AR.json";
+const hashFile = "C:/Users/valer/OneDrive/Documents/GitHub/luckyDucksPack/misc/NFT_metadata/hashes.json";
+const sourceFile = "C:/Users/valer/OneDrive/Documents/GitHub/luckyDucksPack/misc/NFT_metadata/_metadata_v2.json";
 
-const destPath = "C:/Users/valer/Desktop/LuckyDuckPack_generative/_metadata_hashes_AR.json";
+const destPath = "C:/Users/valer/Desktop/_metadata_hashes_.json";
 
 function addValue(database){
     var updated = JSON.parse(
@@ -69,14 +69,15 @@ function truncateDatabase(database, amount){
 }
 
 data = require(sourceFile);
-//hashes = require(hashFile);
+hashes = require(hashFile);
 let newData = [];
 for(let x=0; x<data.length; ++x){
+    let provenance = '29c8c78a66ee0edd9d8825f9cc02fe8ed0b58f5e0c2bc8a89ae5be08f74ae077';
     let tempData = JSON.stringify(data[x]);
-    //let hash = hashes[x];
-    //old/let manipData = tempData.replace('.png",', '.png","image_file_hash":"'+hash+'",');
+    let hash = hashes[x];
+    let manipData = tempData.replace('.png",', '.png","image_file_hash":"'+hash+'","collection_provenance_hash":"'+provenance+'",');
     //let manipData = tempData.replace('.png",', '.png","image_alternative_location":"ARWEAVEMANIFEST/'+x+'.png",');
-    let manipData = tempData.replace('.png","image_alternative_location":"ipfs://bafybeicjl7jihwko5xjm4ehxqusugcuofd2vfepxv6ya6lfc5toviafvfu/'+x+'.png",', '.png",');
+    //let manipData = tempData.replace('.png","image_alternative_location":"ipfs://bafybeicjl7jihwko5xjm4ehxqusugcuofd2vfepxv6ya6lfc5toviafvfu/'+x+'.png",', '.png",');
     //if(x==0) console.log(tempData);
     //if(x==0) console.log(manipData);
     newData.push(JSON.parse(manipData));

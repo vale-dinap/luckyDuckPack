@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-const sourceFile = "C:/Users/valer/Desktop/LuckyDuckPack_generative/build/json/_metadata.json";
+const sourceFile = "C:/Users/valer/OneDrive/Documents/GitHub/luckyDucksPack/misc/NFT_metadata/_metadata_IPFS.json";
 //const destPath = process.env.TOKENMETADATA_DESTINATION_PATH;
 
 function buildTraitsDict(traitsArray){

@@ -94,7 +94,15 @@ def getListFromTxtFile(file):
 #token_metadata_hashes = hashAll_and_save("tokenMetadata", tokenmetadata_files_folder, "", hash_folder, 10000)
 #token_media_hashes = hashAll_and_save("tokenMedia", tokenmedia_files_folder, "png", hash_folder, 10000)
 token_media_hashes = hash_all(tokenmedia_files_folder, "png", 10000)
-print(token_media_hashes)
+#print(token_media_hashes)
+'''
+output=""
+for x in range(0,10000,1):
+    output+=token_media_hashes[x]
+print("Concatenated hashes string:\n"+output)
+finalHash = hashString(output)
+print("\nFinal Provenance hash:\n"+finalHash)
+'''
 #print("Hash of [concatenated metadata file hashes]: "+token_metadata_hashes["hashOfAll"])
 #print("Hash of [concatenated media file hashes]: "+token_media_hashes["hashOfAll"])
 '''
