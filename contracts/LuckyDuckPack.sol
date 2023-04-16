@@ -162,11 +162,11 @@ contract LuckyDuckPack is
             supplyAfter = supplyBefore + amount;
         }
         if(supplyAfter > MAX_SUPPLY) revert MaxSupplyExceeded(supplyAfter - MAX_SUPPLY);
+        totalSupply=supplyAfter;
         for(uint256 nextId = supplyBefore; nextId < supplyAfter;){
             _mint(account, nextId);
             unchecked{++nextId;}
         }
-        totalSupply=supplyAfter;
     }
 
     /**
