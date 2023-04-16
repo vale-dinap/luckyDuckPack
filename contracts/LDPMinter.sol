@@ -52,7 +52,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Creator
     address private _creator;
     // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
-    uint256 private _supplyAtLastWithdraw = _TEAM_RESERVED; // Start at [_TEAM_RESERVED] (as these won't be paid)
+    uint256 private _supplyAtLastWithdraw;
     // When the admin sets this to 'true', minting is enabled (and cannot be disabled)
     bool public mintingStarted;
 
@@ -122,6 +122,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     function startMinting() external onlyOwner {
         if (mintingStarted) revert MintingAlreadyStarted();
         mintingStarted = true;
+        _supplyAtLastWithdraw = _TEAM_RESERVED; // These aren't paid
         NFT.mint_Qgo(msg.sender, _TEAM_RESERVED);
         emit MintingStarted();
     }
