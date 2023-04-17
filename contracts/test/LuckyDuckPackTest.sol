@@ -46,7 +46,7 @@ contract LuckyDuckPackTest is
     // When the provenance record was stored in the smart-contract
     uint256 public immutable PROVENANCE_TIMESTAMP;
     // Where the unrevealed token data is stored
-    string private constant _UNREVEALED_URI = "REPLACE_ME";
+    string private constant _UNREVEALED_URI = "unrevealedURI_string";
     // Location where the collection information is stored
     string private _contract_URI;
     // Location prefix for token metadata (and images)
