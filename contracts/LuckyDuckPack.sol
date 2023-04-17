@@ -42,7 +42,7 @@ contract LuckyDuckPack is
     // Keeps track of the total supply
     uint256 public totalSupply;
     // Final provenance hash - hardcoded for transparency
-    string public constant PROVENANCE = "a10f0c8e99734955d7ff53ac815a1d95aa1daa413e1d6106cb450d584c632b0b";
+    string public constant PROVENANCE = "29c8c78a66ee0edd9d8825f9cc02fe8ed0b58f5e0c2bc8a89ae5be08f74ae077";
     // When the provenance record was stored in the smart-contract
     uint256 public immutable PROVENANCE_TIMESTAMP;
     // Deployer address
