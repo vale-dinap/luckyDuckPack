@@ -91,7 +91,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     // =============================================================
-    //                         FUNCTIONS
+    //                     FUNCTIONS - MINTING
     // =============================================================
 
     /**
@@ -128,14 +128,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Set the creator address.
-     */
-    function setCreatorAddress(address creatorAddr) external onlyOwner {
-        if (creatorAddr == address(0)) revert InputIsZero();
-        _creator = creatorAddr;
-    }
-
-    /**
      * @notice Shows how many tokens are left to be minted.
      */
     function mintableSupply() external view returns (uint256 supply) {
@@ -149,6 +141,18 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function currentPrice() external view returns (uint256) {
         return _currentPrice_t6y();
+    }
+
+    // =============================================================
+    //                    FUNCTIONS - CASH OUT
+    // =============================================================
+
+    /**
+     * @notice Set the creator address.
+     */
+    function setCreatorAddress(address creatorAddr) external onlyOwner {
+        if (creatorAddr == address(0)) revert InputIsZero();
+        _creator = creatorAddr;
     }
 
     /**
@@ -195,7 +199,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     // =============================================================
-    //                      PRIVATE FUNCTIONS
+    //                       PRIVATE FUNCTIONS
     // =============================================================
 
     /**

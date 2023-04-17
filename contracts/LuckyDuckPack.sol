@@ -118,12 +118,14 @@ contract LuckyDuckPack is
     // =============================================================
 
     /**
-     * @dev Emitted when the random reveal offset is requested to Chainlink VRF Coordinator.
+     * @dev Emitted when the request for the random reveal offset is sent to the
+     * Chainlink VRF Coordinator.
      */
     event RevealRequested(bytes32 indexed requestId);
 
     /**
-     * @dev Emitted when the reveal is fulfilled by Chainlink VRF Coordinator.
+     * @dev Emitted when the Chainlink VRF Coordinator fulfills the reveal request,
+     * providing a random number to be used as the reveal offset.
      */
     event RevealFulfilled(
         bytes32 indexed requestId,
@@ -131,28 +133,76 @@ contract LuckyDuckPack is
     );
 
     /**
-     * @dev Error returned when the mint function is called by a different address than the minter contract.
+     * @dev Custom error thrown when the mint function is called by an address
+     * other than the minter contract.
      */
     error CallerIsNoMinter();
 
     /**
-     * @dev Error returned when one or more function parameters are empty/zero.
+     * @dev Custom error thrown when one or more function parameters are empty/zero.
+     * The 'index' parameter indicates the position of the empty input.
      */
     error EmptyInput(uint256 index);
 
     /**
-     * @dev Error returned when attempting to mint over the max supply.
+     * @dev Custom error thrown when an attempt to mint tokens exceeds the
+     * maximum allowed supply. The 'excess' parameter indicates the number of
+     * tokens exceeding the max supply.
      */
     error MaxSupplyExceeded(uint256 excess);
 
     // =============================================================
-    //                       MAIN FUNCTIONS
+    //                  CONTRACT INITIALIZATION
     // =============================================================
 
     /**
-     * @notice Mint function, callable only by the minter contract.
-     * @param account Address to mint the token to.
-     * @param amount Amount of tokens to be minted.
+     * @notice Initializes the contract by setting the required parameters and
+     * burning the admin keys to make the data effectively immutable.
+     * This function is restricted to the contract owner and can only be called once.
+     * @param minterAddress The address of the minter contract
+     * @param rewarderAddress The address of the rewarder contract, which will receive
+     * royalties
+     * @param contract_URI The URI of the contract metadata
+     * @param baseURI_IPFS The base URI for the IPFS storage of token metadata
+     * @dev The function reverts if the contract doesn't have sufficient LINK balance
+     * for the collection reveal.
+     */
+    function initialize(
+        address minterAddress,
+        address rewarderAddress,
+        string calldata contract_URI,
+        string calldata baseURI_IPFS
+    ) external onlyOwner {
+        // Validate input
+        if(minterAddress==address(0)) revert EmptyInput(0);
+        if(rewarderAddress==address(0)) revert EmptyInput(1);
+        if(bytes(contract_URI).length==0) revert EmptyInput(2);
+        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(3);
+        /// Ensure the contract has enough LINK tokens for the collection reveal
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
+        // Store the provided data
+        minterContract = minterAddress;
+        _contract_URI = contract_URI;
+        _baseURI_IPFS = baseURI_IPFS;
+        // Set the default royalty for the rewarder address
+        _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
+        // Burn admin keys to make the data effectively immutable
+        renounceOwnership();
+    }
+
+    // =============================================================
+    //                          MINTING
+    // =============================================================
+
+    /**
+     * @notice Mints tokens and assigns them to the specified account, callable only
+     * by the minter contract.
+     * @param account The address to which the minted tokens will be assigned
+     * @param amount The number of tokens to be minted
+     * @dev The minter contract ensures the minting amount is restricted to a maximum
+     * of 10 tokens per call.
+     * Throws a custom error if the caller is not the minter contract or if the total
+     * supply would exceed the maximum allowed.
      */
     function mint_Qgo(address account, uint256 amount) external {
         if(_msgSender() != minterContract) revert CallerIsNoMinter();
@@ -169,35 +219,61 @@ contract LuckyDuckPack is
         }
     }
 
+    // =============================================================
+    //                           REVEAL
+    // =============================================================
+
     /**
-     * @notice This is the only function restricted to admin, and admin keys
-     * are automatically burned when called. The function does the following:
-     * store Minter contract address; set Rewarder contract address as royalty
-     * receiver; set the Base URI and Contract URI; finally, burn the admin keys.
-     * As admin keys are burnt, all the data set by this function becomes
-     * effectively immutable.
+     * @notice Initiates the collection reveal process by requesting randomness
+     * from Chainlink VRF.
+     * This function can be called by anyone, but only once and after all tokens
+     * have been minted.
+     * @return requestId The unique request ID associated with the Chainlink VRF
+     * request
+     * @dev Requires sufficient LINK balance to cover the VRF request fee
      */
-    function initialize(
-        address minterAddress,
-        address rewarderAddress,
-        string calldata contract_URI,
-        string calldata baseURI_IPFS
-    ) external onlyOwner {
-        // Input checks
-        if(minterAddress==address(0)) revert EmptyInput(0);
-        if(rewarderAddress==address(0)) revert EmptyInput(1);
-        if(bytes(contract_URI).length==0) revert EmptyInput(2);
-        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(3);
-        // Make sure that the contract has enough LINK tokens for collection reveal
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
-        // Store data
-        minterContract = minterAddress;
-        _contract_URI = contract_URI;
-        _baseURI_IPFS = baseURI_IPFS;
-        _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
-        // Burn admin keys
-        renounceOwnership();
+    function reveal() external returns (bytes32 requestId) {
+        require(totalSupply == MAX_SUPPLY, "Minting still in progress");
+        require(!_revealRequested, "Reveal already requested");
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
+        _revealRequested = true; // Prevent being called more than once
+        requestId = requestRandomness(keyHash, fee);
+        emit RevealRequested(requestId);
     }
+
+    /**
+     * @notice Callback function used by Chainlink VRF to determine the reveal
+     * offset for the collection.
+     * This function can only be called by Chainlink.
+     * @param requestId The unique request ID associated with the Chainlink VRF request
+     * @param randomness The random value provided by Chainlink VRF
+     * @dev This function ensures it is not called more than once and calculates
+     * the reveal offset based on the received randomness.
+     */
+    function fulfillRandomness(bytes32 requestId, uint256 randomness)
+        internal
+        override
+    {
+        require(!_isRevealed(), "Already revealed"); // Ensure it's not called twice
+        uint256 randomOffset = randomness % MAX_SUPPLY; // Compute the final value
+        revealOffset = randomOffset == 0 ? 1 : randomOffset; // Ensure the offset is not zero
+        revealTimestamp = block.timestamp; // Store the reveal timestamp
+        emit RevealFulfilled(requestId, revealOffset);
+    }
+
+    /**
+     * @notice Retrieves the revealed ID for a given token.
+     * @param id The Token ID for which the revealed ID is requested.
+     * @return The revealed ID as a uint256.
+     */
+    function revealedId(uint256 id) public view virtual returns (uint256) {
+        require(_isRevealed(), "Collection not revealed");
+        return (id + revealOffset) % MAX_SUPPLY;
+    }
+
+    // =============================================================
+    //                            URI
+    // =============================================================
 
     /**
      * @notice Change the location from which the offchain data is fetched
@@ -214,11 +290,11 @@ contract LuckyDuckPack is
     }
 
     /**
-     * @notice Set the baseURI of the alternative location where the offchain
-     * data is stored (Arweave).
-     * If already set, the function reverts, so it can be called only once.
-     * For security reasons, only the contract deployer is allowed to call this
-     * function.
+     * @notice Sets the baseURI for the alternative off-chain data storage
+     * location (Arweave).
+     * If already set, the function reverts to prevent unauthorized modifications.
+     * This function can only be called by the contract deployer for security
+     * reasons.
      */
     function setArweaveBaseUri(string calldata baseURI_AR) external {
         require(msg.sender == DEPLOYER, "Permission denied.");
@@ -227,53 +303,17 @@ contract LuckyDuckPack is
     }
 
     /**
-     * @notice Collection reveal (request randomness - Chainlink VRF).
-     * This function can be called only once and by anyone, but only after
-     * all tokens have been minted.
-     */
-    function reveal() external returns (bytes32 requestId) {
-        require(totalSupply == MAX_SUPPLY, "Minting still in progress");
-        require(!_revealRequested, "Reveal already requested");
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
-        _revealRequested = true;
-        requestId = requestRandomness(keyHash, fee);
-        emit RevealRequested(requestId);
-    }
-
-    /**
-     * @notice Callback function used by Chainlink VRF (for collection reveal).
-     * Only Chainlink has permissions to call it.
-     */
-    function fulfillRandomness(bytes32 requestId, uint256 randomness)
-        internal
-        override
-    {
-        require(!_isRevealed(), "Already revealed"); // Ensure it's not called twice
-        uint256 randomOffset = randomness % MAX_SUPPLY; // Compute the final value
-        revealOffset = randomOffset == 0 ? 1 : randomOffset; // Offset cannot be zero
-        revealTimestamp = block.timestamp;
-        emit RevealFulfilled(requestId, revealOffset);
-    }
-
-    /**
-     * @notice Get the revealed ID.
-     * @param id Token ID.
-     */
-    function revealedId(uint256 id) public view virtual returns (uint256) {
-        require(_isRevealed(), "Collection not revealed");
-        return (id + revealOffset) % MAX_SUPPLY;
-    }
-
-    /**
-     * @notice Return the contract metadata URI.
+     * @notice Retrieves the URI containing the contract's metadata.*
+     * @return The contract metadata URI as a string.
      */
     function contractURI() public view returns (string memory) {
         return _contract_URI;
     }
 
     /**
-     * @notice Return the token URI.
-     * @param id Token ID.
+     * @notice Retrieves the URI associated with a specific token.
+     * @param id The Token ID for which the URI is requested.
+     * @return The token URI as a string.
      */
     function tokenURI(uint256 id) public view override returns (string memory) {
         require(_exists(id), "URI query for nonexistent token"); // Ensure that the token exists.
@@ -282,6 +322,10 @@ contract LuckyDuckPack is
                 ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
                 : _UNREVEALED_URI; // otherwise return the unrevealedURI.
     }
+
+    // =============================================================
+    //                     INTERNAL FUNCTIONS
+    // =============================================================
 
     /**
      * @dev Return True if the collection is revealed.
@@ -427,7 +471,7 @@ contract LuckyDuckPack is
     }
 
     // =============================================================
-    //                  ERC2981 (CREATOR FEES INFO)
+    //            ERC2981 (CREATOR FEES) IMPLEMENTATION
     // =============================================================
 
     /**
