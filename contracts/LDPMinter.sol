@@ -39,21 +39,21 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     //                     CONTRACT VARIABLES
     // =============================================================
 
-    // Pricing - hardcoded for transparency and efficiency
-    uint256 private constant _PRICE1 = 1.3 ether; // From 1 to 3333
-    uint256 private constant _PRICE2 = 1.8 ether; // From 3334 to 6666
-    uint256 private constant _PRICE3 = 2.3 ether; // From 6667 to 10000
-    // Number of tokens reserved to the team
+    // Pricing - hard-coded for transparency and efficiency
+    uint256 private constant _PRICE1 = 1.3 ether; // Price for tokens 1 to 3333
+    uint256 private constant _PRICE2 = 1.8 ether; // Price for tokens 3334 to 6666
+    uint256 private constant _PRICE3 = 2.3 ether; // Price for tokens 6667 to 10000
+    // Number of tokens reserved for the team
     uint256 private constant _TEAM_RESERVED = 35;
     // Instance of the token contract
     ILDP public immutable NFT;
     // LDP Rewarder contract address
     address public immutable REWARDER_ADDRESS;
-    // Creator
+    // Collection creator address
     address private _creator;
-    // Total supply at last proceeds withdraw - required to track the incentives that have already been sent
+    // Total supply at last proceeds withdrawal - tracks incentives already sent
     uint256 private _supplyAtLastWithdraw;
-    // When the admin sets this to 'true', minting is enabled (and cannot be disabled)
+    // If set to 'true' by admin, minting is enabled and cannot be disabled
     bool public mintingStarted;
 
     // =============================================================
@@ -62,12 +62,12 @@ contract LDPMinter is Ownable, ReentrancyGuard {
 
     event MintingStarted(); // Emitted when the minting is opended
 
-    error InputIsZero(); // When using address(0) as function parameter
-    error MintingNotStarted(); // Attempting to mint before [mintingStarted] is enabled
-    error MintingAlreadyStarted(); // Calling {startMinting} while minting has already started
-    error MaxMintsPerCallExceeded(); // Attempting to mint more than 10 NFTs at once
-    error Underpaid(uint256 paid, uint256 required); // Returned when underpaying
-    error PaymentError(bool successA, bool successB); // Transfer error
+    error InputIsZero(); // Triggered when address(0) is used as a function parameter
+    error MintingNotStarted(); // Occurs when trying to mint before mintingStarted is enabled
+    error MintingAlreadyStarted(); // Raised when startMinting is called while minting is already in progress
+    error MaxMintsPerCallExceeded(); // Happens when attempting to mint more than 10 NFTs at once
+    error Underpaid(uint256 paid, uint256 required); // Indicates insufficient payment
+    error PaymentError(bool successA, bool successB); // Denotes a transfer error
 
     // =============================================================
     //                        CONSTRUCTOR
