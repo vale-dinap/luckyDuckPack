@@ -17,7 +17,7 @@ import "./lib/tools/WethUnwrapper.sol";
  * the remaining 93.75% going to token holders proportionally to the number of
  * tokens they own.
  *
- * No staking, nor other actions, are required: own your token, claim
+ * No staking, nor other actions, are required: hold your token(s), claim
  * your earnings - it's THAT simple.
  *
  * Important: The earnings are tied to the tokens, not to the holder addresses,
