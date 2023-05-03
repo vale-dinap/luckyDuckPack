@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-///// DIVIDENDS DUMMY CONTRACT - ABI consistent with the production version - includes events /////
+///// EARNINGS MOCK CONTRACT - ABI consistent with the production version - includes events ///////
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract MockLDPRewarder {
@@ -37,11 +37,24 @@ contract MockLDPRewarder {
      * @dev Raised on payout errors.
      */
     error CashoutError();
+    /**
+     * @dev Returned when sender doesn't own the NFT being processed.
+     */
+    error SenderIsNoTokenOwner(uint256 tokenId);
+    /**
+     * @dev Emitted by {noWeth} modifier when ERC20-reserved operations are
+     * attempted on WETH; check {noWeth} documentation for more info.
+     */
+    error NotAllowedOnWETH();
+
+    // =============================================================
+    //                          MODIFIERS
+    // =============================================================
 
     // RECEIVE FUNCTION //
 
     /**
-     * @dev Update the revenue records when ETH are received.
+     * @dev In the production version, also updates the revenue records when ETH are received.
      */
     receive() external payable {
         emit ReceivedEth(msg.value);
@@ -52,7 +65,7 @@ contract MockLDPRewarder {
     /**
      * @notice Cashout the revenues accrued by all owned NFTs.
      *
-     * @dev TEST: this currently works on a test mapping; the production
+     * @dev TEST: in this mock, works on a test mapping; the production
      *            version checks all token IDs owned by msg.sender and performs
      *            the cashout on each, similar to {nftCashout};
      *            in this test version, the accrued earnings can be set by
@@ -69,11 +82,13 @@ contract MockLDPRewarder {
     /**
      * @notice Cashout all revenues accrued by the specified NFT.
      *
-     * @dev TEST: this currently works on a test mapping; the production
+     * @dev TEST: in this mock, works on a test mapping; the production
      *            version checks the owner of `tokenId` and sends them the
      *            accrued earnings;
      *            in this test version, the accrued earnings can be set by
      *            calling {TEST_setNftRevenues}.
+     *            This function reverts with custom error SenderIsNoTokenOwner(tokenId)
+     *            if the caller doesn't own the token "tokenId".
      */
     function nftCashout(uint256 tokenId) external {
         uint256 _revenues = TEST_nftRevenues[tokenId];

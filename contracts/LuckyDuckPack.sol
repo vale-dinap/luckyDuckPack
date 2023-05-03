@@ -55,11 +55,12 @@ contract LuckyDuckPack is
     string private _baseURI_IPFS; // IPFS
     string private _baseURI_AR; // Arweave
     /**
-     * @notice What if the data stored on IPFS or Arweave or becomes
-     * inaccessible? Although it's unlikely, one can never be too sure.
-     * That's why we have stored the NFT collection's off-chain data on both
-     * networks as a precaution. This variable, when set to True, directs
-     * the contract to retrieve the off-chain data from Arweave instead of IPFS.
+     * @notice To ensure long-term accessibility and reliability of the NFT
+     * collection's off-chain data, we have implemented a redundant storage
+     * solution using both IPFS and Arweave networks.
+     * In the event of accessibility issues with IPFS, this variable can be
+     * set to True, directing the contract to retrieve the off-chain data from
+     * Arweave instead of IPFS.
      */
     bool public useArweaveUri;
     // Minter contract address

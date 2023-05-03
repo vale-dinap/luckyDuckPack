@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
-///// MINTER DUMMY CONTRACT - ABI consistent with the production version - includes events/errors /////
+///// MINTER MOCK CONTRACT - ABI consistent with the production version - includes events/errors //////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 contract MockLDPMinter {
@@ -34,7 +34,7 @@ contract MockLDPMinter {
     error MintingAlreadyStarted();
 
     /**
-     * @notice Mint (buy) tokens to the caller address.
+     * @notice Mint (buy) tokens to the caller address. NonReentrant in the production version.
      * @param amount Number of tokens to be minted, max 10 per transaction.
      */
     function mint(uint256 amount) external payable {
@@ -53,9 +53,9 @@ contract MockLDPMinter {
 
     /**
      * @notice Enable minting.
-     * @dev This function can be called only once.
+     * @dev This function can be called only once. Restricted to Owner in the production version.
      */
-    function initializeMinting() external {
+    function startMinting() external {
         if (mintingStarted) revert MintingAlreadyStarted();
         mintingStarted = true;
         emit MintingStarted();

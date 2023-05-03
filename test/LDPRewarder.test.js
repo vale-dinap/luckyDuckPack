@@ -105,7 +105,7 @@ contract("Rewarder contract", async (accounts) => {
     });
   });
 
-  describe.skip("WETH revenues", function () {
+  describe("WETH revenues", function () {
     it("All values are initially zero", async () => {
       this.unprocessedWethInitial = await rewarderContract.unprocessedWeth();
       // Assert that all values are initially zero

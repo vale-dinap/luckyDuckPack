@@ -4,7 +4,7 @@ const Link = artifacts.require("LinkToken");
 const VRFCoordinator = artifacts.require("VRFCoordinator");
 const LuckyDuckPack = artifacts.require("LuckyDuckPackTest");
 const LDPMinter = artifacts.require("LDPMinter");
-const LDPRewarder = artifacts.require("LDPRewarder");
+const LDPRewarder = artifacts.require("LDPRewarderTest");
 
 // Receiving the creator's cut of creator fees
 const creatorAddress = process.env.CREATOR_ADDRESS;
