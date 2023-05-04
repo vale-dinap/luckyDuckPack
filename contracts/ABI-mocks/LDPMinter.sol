@@ -48,7 +48,8 @@ contract MockLDPMinter {
                 revert Underpaid(msg.value, currentPrice() * amount);
         }
         // Finally, mint the tokens
-        // HERE WILL BE THE MINT CALL - THE LINKED ERC721 CONTRACT WILL SEND EVENTS
+        TEST_mintedSupply += amount; // HERE WILL BE THE MINT CALL
+        // The ERC721 contract will also emit mint events
     }
 
     /**
@@ -86,12 +87,6 @@ contract MockLDPMinter {
         if (curSupply < 3334) return _PRICE1;
         else if (curSupply < 6667) return _PRICE3;
         else return _PRICE3;
-    }
-
-    // TEST-ONLY FUNCTIONS - NOT PRESENT IN PRODUCTION VERSION //
-
-    function TEST_increaseMintedSupply(uint256 amount) public {
-        TEST_mintedSupply += amount;
-    }        
+    }     
 
 }
