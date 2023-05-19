@@ -11,9 +11,9 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 // TODO: replace ALL "REPLACE_ME" strings and double check all hardcoded values
 
 /**
- * @dev Lucky Duck Pack NFT contract
+ * @title Lucky Duck Pack NFT contract
  *
- * Commercial rights: As long as you own a Lucky Duck Pack NFT, you are
+ * @notice Commercial rights: As long as you own a Lucky Duck Pack NFT, you are
  * granted an unlimited, worldwide, non-exclusive, royalty-free license to
  * use, reproduce, and display the underlying artwork for commercial purposes,
  * including creating and selling derivative work such as merchandise
@@ -23,6 +23,42 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
  * of being efficient, secure, transparent and accessible. Even if you
  * don't have a programming background, take a look at the code for yourself.
  * Don't trust, verify.
+ *
+ * --------------------------------------------------------------------------
+ * DISCLAIMER:
+ * This smart contract code (the "Software") is provided "as is", without
+ * warranty of any kind, express or implied, including but not limited to
+ * the warranties of merchantability, fitness for a particular purpose, title
+ * and non-infringement. In no event shall the copyright holders or anyone
+ * distributing the Software be liable for any damages or other liability,
+ * whether in contract, tort or otherwise, arising from, out of, or in
+ * connection with the Software or the use or other dealings in the Software.
+ * 
+ * The Software is decentralized and the admin keys have been burned following
+ * deployment, meaning the creator no longer has any special privileges, nor
+ * the power to fix, alter, or control its behavior.
+ *
+ * The creator of the Software is not a law firm and this disclaimer does not
+ * constitute legal advice. The laws and regulations applicable to smart contracts
+ * and blockchain technologies vary by jurisdiction. As such, you are strongly
+ * advised to consult with your legal counsel before engaging in any smart
+ * contract or blockchain-related activities.
+ *
+ * The creator of the Software disclaims all responsibility and liability for the
+ * accuracy, applicability, or completeness of the Software. Any use or reliance
+ * on the Software or any part thereof is strictly at your own risk, and you fully
+ * accept and assume all risks associated with any such reliance. This includes,
+ * but is not limited to, responsibility for the consequences of any errors,
+ * inaccuracies, omissions, or other defects that may be present in the Software.
+ *
+ * You agree to indemnify and hold harmless the creator of the Software from and
+ * against any and all losses, liabilities, claims, damages, costs, and expenses,
+ * including legal fees and disbursements, arising out of or resulting from your
+ * use of the Software.
+ * 
+ * By using the Software, you acknowledge that you have read and understood this
+ * disclaimer, and agree to be bound by its terms.
+ * --------------------------------------------------------------------------
  */
 contract LuckyDuckPack is
     Ownable,                            // Admin role

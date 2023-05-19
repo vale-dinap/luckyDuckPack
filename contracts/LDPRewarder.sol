@@ -7,9 +7,9 @@ import "./lib/interfaces/ILDP.sol";
 import "./lib/tools/WethUnwrapper.sol";
 
 /**
- * @dev Lucky Duck Pack Rewarder
+ * @title Lucky Duck Pack Rewarder
  * 
- * This contract receives 100% of the creator fees from LDP trades.
+ * @notice This contract receives 100% of the creator fees from LDP trades.
  * Whenever funds are received, a portion is set aside for each LDP token;
  * token owners can claim their cut at any moment by calling {cashout}.
  *
@@ -31,6 +31,42 @@ import "./lib/tools/WethUnwrapper.sol";
  * This contract is fair, unstoppable, unpausable, immutable: there is no admin
  * role, while the Creator has only the authority to change their cashout address
  * but has no access to the earnings shared with the NFT holders.
+ *
+ * --------------------------------------------------------------------------
+ * DISCLAIMER:
+ * This smart contract code (the "Software") is provided "as is", without
+ * warranty of any kind, express or implied, including but not limited to
+ * the warranties of merchantability, fitness for a particular purpose, title
+ * and non-infringement. In no event shall the copyright holders or anyone
+ * distributing the Software be liable for any damages or other liability,
+ * whether in contract, tort or otherwise, arising from, out of, or in
+ * connection with the Software or the use or other dealings in the Software.
+ * 
+ * The Software is inherently unalterable after deployment. It has been designed
+ * without admin keys or any other form of privileged control, which means it
+ * cannot be modified, controlled, or manipulated after its deployment.
+ *
+ * The creator of the Software is not a law firm and this disclaimer does not
+ * constitute legal advice. The laws and regulations applicable to smart contracts
+ * and blockchain technologies vary by jurisdiction. As such, you are strongly
+ * advised to consult with your legal counsel before engaging in any smart
+ * contract or blockchain-related activities.
+ *
+ * The creator of the Software disclaims all responsibility and liability for the
+ * accuracy, applicability, or completeness of the Software. Any use or reliance
+ * on the Software or any part thereof is strictly at your own risk, and you fully
+ * accept and assume all risks associated with any such reliance. This includes,
+ * but is not limited to, responsibility for the consequences of any errors,
+ * inaccuracies, omissions, or other defects that may be present in the Software.
+ *
+ * You agree to indemnify and hold harmless the creator of the Software from and
+ * against any and all losses, liabilities, claims, damages, costs, and expenses,
+ * including legal fees and disbursements, arising out of or resulting from your
+ * use of the Software.
+ * 
+ * By using the Software, you acknowledge that you have read and understood this
+ * disclaimer, and agree to be bound by its terms.
+ * --------------------------------------------------------------------------
  */
 contract LDPRewarder is ReentrancyGuard {
 
