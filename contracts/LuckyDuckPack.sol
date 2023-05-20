@@ -35,8 +35,8 @@ import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
  * connection with the Software or the use or other dealings in the Software.
  * 
  * The Software is decentralized and the admin keys have been burned following
- * deployment, meaning the creator no longer has any special privileges, nor
- * the power to fix, alter, or control its behavior.
+ * deployment, meaning the creator has limited privileges and does not have the
+ * power to fix, alter, or control its behavior.
  *
  * The creator of the Software is not a law firm and this disclaimer does not
  * constitute legal advice. The laws and regulations applicable to smart contracts
