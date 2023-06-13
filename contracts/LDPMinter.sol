@@ -29,9 +29,6 @@ import "./lib/interfaces/ILDP.sol";
  *  be found in the NFT contract.
  * -The design of the mint function has been kept minimal to reduce its gas
  *  costs.
- * -A portion of the payment is immediately distributed to token holders as
- *  a starting incentive/cashback, with the smart contract enforcing the
- *  distribution.
  *
  * --------------------------------------------------------------------------
  * DISCLAIMER:
@@ -164,7 +161,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Shows how many tokens are left to be minted.
+     * @notice Get how many tokens are left to be minted.
      */
     function mintableSupply() external view returns (uint256 supply) {
         unchecked {
@@ -173,7 +170,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Show the current price.
+     * @notice Get the current price.
      */
     function currentPrice() external view returns (uint256) {
         return _currentPrice_t6y();
