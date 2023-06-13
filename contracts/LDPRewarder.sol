@@ -11,7 +11,7 @@ import "./lib/tools/WethUnwrapper.sol";
  * 
  * @notice This contract receives 100% of the creator fees from LDP trades.
  * Whenever funds are received, a portion is set aside for each LDP token;
- * token owners can claim their rewards at any moment by calling {cashout}.
+ * token owners can claim their portion at any moment by calling {cashout}.
  *
  * The contract reserves 6.25% of the received funds for the collection
  * creator, with the remaining 93.75% going to token holders proportionally

@@ -55,6 +55,7 @@ contract("Rewarder contract", async (accounts) => {
       rewarderContract.address,
       "some_uri",
       "some_uri",
+      "some_uri",
     ];
     // Initialize the contract
     await linkContract.transfer(nftContract.address, revealFee, {
@@ -126,7 +127,7 @@ contract("Rewarder contract", async (accounts) => {
         "nftRevenuesErc20(uint256,address)"
       ](0, mockTokenA.address);
       this.erc20recordsUpToDateInitial =
-        await rewarderContract.isErc20RevenueRecordsUpToDate(
+        await rewarderContract.isErc20RecordsUpToDate(
           mockTokenA.address
         );
       // Assert that all values are initially zero

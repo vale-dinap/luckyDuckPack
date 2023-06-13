@@ -7,21 +7,21 @@ import "../lib/interfaces/ILDP.sol";
 import "../lib/tools/WethUnwrapper.sol";
 
 /**
- * @dev Lucky Duck Pack Rewarder
+ * @title Lucky Duck Pack Rewarder
  * 
- * This contract receives 100% of the creator fees from LDP trades.
+ * @notice This contract receives 100% of the creator fees from LDP trades.
  * Whenever funds are received, a portion is set aside for each LDP token;
- * token owners can claim their cut at any moment by calling {cashout}.
+ * token owners can claim their rewards at any moment by calling {cashout}.
  *
- * The contract reserves 6.25% of the earnings for the collection creator, with
- * the remaining 93.75% going to token holders proportionally to the number of
- * tokens they own.
+ * The contract reserves 6.25% of the received funds for the collection
+ * creator, with the remaining 93.75% going to token holders proportionally
+ * to the number of tokens they own.
  *
- * No staking, nor other actions, are required: own your token, claim
- * your earnings - it's THAT simple.
+ * No staking, nor other actions, are required: hold your token(s), claim
+ * your rewards - it's THAT simple.
  *
- * Important: The earnings are tied to the tokens, not to the holder addresses,
- * meaning that if an NFT is sold or transferred without claiming its earnings
+ * Important: The rewards are tied to the tokens, not to the holder addresses,
+ * meaning that if an NFT is sold or transferred without claiming its rewards
  * first, the new owner will have the right to do so.
  *
  * Supported currencies are ETH and WETH by default. In the event that creator fees
@@ -30,7 +30,43 @@ import "../lib/tools/WethUnwrapper.sol";
  *
  * This contract is fair, unstoppable, unpausable, immutable: there is no admin
  * role, while the Creator has only the authority to change their cashout address
- * but has no access to the earnings shared with the NFT holders.
+ * but has no access to the funds reserved to the NFT holders.
+ *
+ * --------------------------------------------------------------------------
+ * DISCLAIMER:
+ * This smart contract code (the "Software") is provided "as is", without
+ * warranty of any kind, express or implied, including but not limited to
+ * the warranties of merchantability, fitness for a particular purpose, title
+ * and non-infringement. In no event shall the copyright holders or anyone
+ * distributing the Software be liable for any damages or other liability,
+ * whether in contract, tort or otherwise, arising from, out of, or in
+ * connection with the Software or the use or other dealings in the Software.
+ * 
+ * The Software is inherently unalterable after deployment. It has been designed
+ * without admin keys or any other form of privileged control, which means it
+ * cannot be modified, controlled, or manipulated after its deployment.
+ *
+ * The creator of the Software is not a law firm and this disclaimer does not
+ * constitute legal advice. The laws and regulations applicable to smart contracts
+ * and blockchain technologies vary by jurisdiction. As such, you are strongly
+ * advised to consult with your legal counsel before engaging in any smart
+ * contract or blockchain-related activities.
+ *
+ * The creator of the Software disclaims all responsibility and liability for the
+ * accuracy, applicability, or completeness of the Software. Any use or reliance
+ * on the Software or any part thereof is strictly at your own risk, and you fully
+ * accept and assume all risks associated with any such reliance. This includes,
+ * but is not limited to, responsibility for the consequences of any errors,
+ * inaccuracies, omissions, or other defects that may be present in the Software.
+ *
+ * You agree to indemnify and hold harmless the creator of the Software from and
+ * against any and all losses, liabilities, claims, damages, costs, and expenses,
+ * including legal fees and disbursements, arising out of or resulting from your
+ * use of the Software.
+ * 
+ * By using the Software, you acknowledge that you have read and understood this
+ * disclaimer, and agree to be bound by its terms.
+ * --------------------------------------------------------------------------
  */
 contract LDPRewarderTest is ReentrancyGuard {
 
@@ -39,14 +75,14 @@ contract LDPRewarderTest is ReentrancyGuard {
     // =============================================================
 
     /**
-     * @dev Type defining revenues info.
-     * Keeps track of lifetime earnings and lifetime cashout of each NFT, so that:
-     * [newEarnings] = [lifetimeEarned] - [lifetimeCollected]
+     * @dev Type defining rewards info.
+     * Keeps track of lifetime rewards and lifetime cashout of each NFT, so that:
+     * [newRewards] = [lifetimeAccrued] - [lifetimeCollected]
      */
-    struct Revenues {
-        uint256 lifetimeEarnings; // Lifetime earnings of each NFT
+    struct Rewards {
+        uint256 lifetimeAccrued; // Lifetime accrued rewards of each NFT
         mapping(uint256 => uint256) lifetimeCollected; // NFT ID => amount
-        // Creator Lifetime Earnings == lifetimeEarnings*10000/15
+        // Creator Lifetime Accrued == lifetimeAccrued*10000/15
         // Creator Lifetime Collected == lifetimeCollected[_creatorId]
     }
 
@@ -54,12 +90,12 @@ contract LDPRewarderTest is ReentrancyGuard {
     //                     CONTRACT VARIABLES
     // =============================================================
 
-    // ETH revenues data
-    Revenues private _revenues;
-    // ERC20 tokens revenues data
-    mapping(address => Revenues) private _erc20Revenues; // Token address => Revenues
-    // Track the processed ERC20 revenues to identify funds received since last records update
-    mapping(address => uint256) private _processedErc20Revenues; // Token address => balance
+    // ETH rewards data
+    Rewards private _rewards;
+    // ERC20 tokens rewards data
+    mapping(address => Rewards) private _erc20Rewards; // Token address => Rewards
+    // Track the processed ERC20 rewards to identify funds received since last records update
+    mapping(address => uint256) private _processedErc20Rewards; // Token address => balance
 
     // Creator address - only for cashout: creator has no special permissions
     address private _creator;
@@ -127,8 +163,8 @@ contract LDPRewarderTest is ReentrancyGuard {
      */
     error SenderIsNoTokenOwner(uint256 tokenId);
     /**
-     * @dev Emitted by {noWeth} modifier when ERC20-reserved operations are
-     * attempted on WETH; check {noWeth} documentation for more info.
+     * @dev Returned by {noWeth} modifier when ERC20-reserved operations
+     * are attempted on WETH; check {noWeth} documentation for more info.
      */
     error NotAllowedOnWETH();
 
@@ -137,7 +173,7 @@ contract LDPRewarderTest is ReentrancyGuard {
     // =============================================================
 
     /**
-     * @dev Earnings in Wrapped Ether (WETH) are meant to be converted to ETH
+     * @dev Rewards in Wrapped Ether (WETH) are meant to be converted to ETH
      * (rather than claimed separately like any other ERC20): this modifier
      * prevents ERC20 functions from operating with WETH.
      */
@@ -147,7 +183,8 @@ contract LDPRewarderTest is ReentrancyGuard {
     }
 
     /**
-     * @dev Makes functions revert if the caller doesn't own the NFT `tokenId`.
+     * @dev Ensures that the function using this modifier can only be executed
+     * by the owner of the NFT with the specified `tokenId`.
      */
     modifier onlyTokenOwner(uint256 tokenId) {
         if (msg.sender != NFT.ownerOf(tokenId))
@@ -172,14 +209,15 @@ contract LDPRewarderTest is ReentrancyGuard {
     // =============================================================
 
     /**
-     * @notice Cashout the revenues (eth) accrued by all owned NFTs.
+     * @notice Cashout the rewards (eth) accrued by all owned NFTs.
      */
     function cashout() external nonReentrant {
         _accountCashout_dHm(msg.sender);
     }
 
     /**
-     * @notice Cashout revenues (eth) accrued by the specified NFT.
+     * @notice Cashout rewards (eth) accrued by the specified NFT.
+     * @param tokenId The ID of the Duck for which the ETH rewards will be cashed out
      */
     function nftCashout(uint256 tokenId) external nonReentrant {
         _nftCashout_M29(tokenId);
@@ -187,26 +225,35 @@ contract LDPRewarderTest is ReentrancyGuard {
 
     /**
      * @notice Similar to {cashout} but works with any ERC20 token.
-     * @param tokenAddress Address of the ERC20 token contract
+     * @param tokenAddress The address of the ERC20 token contract for which
+     * the rewards will be cashed out
      */
     function cashoutErc20(address tokenAddress)
         external
+        nonReentrant
         noWeth(tokenAddress)
     {
+        // Update the ERC20-token records for the specified token contract
         _updateErc20Revenues_a8w(tokenAddress);
+        // Cash out the ERC20-token rewards for the calling account
         _accountCashout_h8W(msg.sender, tokenAddress);
     }
 
     /**
      * @notice Same as {nftCashout}, but working with any ERC20 token.
-     * @param tokenAddress Address of the ERC20 token contract
+     * @param tokenId The ID of the Duck for which the ERC20-token rewards will be cashed out
+     * @param tokenAddress The address of the ERC20 token contract
      */
-    function nftCashoutErc20(uint256 tokenId, address tokenAddress) external {
+    function nftCashoutErc20(uint256 tokenId, address tokenAddress)
+        external
+        nonReentrant
+        noWeth(tokenAddress)
+    {
         _nftCashout_0G0(tokenId, tokenAddress);
     }
 
     /**
-     * @notice Cashout the creator revenues.
+     * @notice Cashout the creator rewards.
      */
     function creatorCashout() external nonReentrant {
         _creatorCashout_89e();
@@ -218,6 +265,7 @@ contract LDPRewarderTest is ReentrancyGuard {
      */
     function creatorCashoutErc20(address tokenAddress)
         external
+        nonReentrant
         noWeth(tokenAddress)
     {
         _creatorCashout_gl3(tokenAddress);
@@ -231,12 +279,12 @@ contract LDPRewarderTest is ReentrancyGuard {
     }
 
     /**
-     * @notice Force updating the revenue records of the given ERC20 token
-     * (unlike ETH records, which are updated automatically, ERC20 records
-     * require a manual update).
+     * @notice Force updating the records of the given ERC20 token (unlike
+     * ETH records, which are updated automatically, ERC20 records require
+     * a manual update).
      * @param tokenAddress Address of the ERC20 token contract
      */
-    function forceUpdateErc20RevenueRecords(address tokenAddress)
+    function forceUpdateErc20Records(address tokenAddress)
         external
         noWeth(tokenAddress)
     {
@@ -251,76 +299,97 @@ contract LDPRewarderTest is ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the total unclaimed revenues generated by tokens held by `account`.
+     * @notice Returns the total unclaimed rewards accrued by tokens held
+     * by `account`.
+     * @param account The address of the account for which the unclaimed
+     * rewards will be calculated
+     * @return accruedRewards The total unclaimed rewards of the tokens
+     * held by the specified account
      */
     function accountRevenues(address account)
         external
         view
-        returns (uint256 accruedRevenues)
+        returns (uint256 accruedRewards)
     {
+        // Get the number of tokens owned by the specified account
         uint256 numOwned = NFT.balanceOf(account);
+        // Iterate through all the tokens owned by the account
         for (uint256 i; i < numOwned; ) {
-            accruedRevenues += _getNftRevenues_idw(
-                _revenues,
+            // Accumulate the rewards of each token owned by the account
+            accruedRewards += _getNftRevenues_idw(
+                _rewards,
                 NFT.tokenOfOwnerByIndex(account, i)
             );
+            // Increment the index (no need to check for overflow)
             unchecked {++i;}
         }
     }
 
     /**
      * @notice ERC20-token version of {accountRevenues}. The function
-     * {isErc20RevenueRecordsUpToDate} can be used to check if these records
+     * {isErc20RecordsUpToDate} can be used to check if these records
      * are already up to date; if not, these can be updated by calling
-     * {forceUpdateErc20RevenueRecords}.
-     * @param account Holder's address.
-     * @param tokenAddress Address of the ERC20 token contract.
+     * {forceUpdateErc20Records}.
+     * @param account The address of the account for which the unclaimed
+     * ERC20-token rewards will be calculated
+     * @param tokenAddress tokenAddress The address of the ERC20 token contract
+     * @return accruedRewards The total unclaimed rewards (in the given
+     * ERC20-token) of the tokens held by the specified account
      */
     function accountRevenuesErc20(address account, address tokenAddress)
         external
         view
-        returns (uint256 accruedRevenues)
+        returns (uint256 accruedRewards)
     {
+        // If the tokenAddress is WETH, always return 0 (there is a separate set of functions for WETH)
         if (tokenAddress == WETH) return 0;
         else {
+            // Get the number of tokens owned by the specified account
             uint256 numOwned = NFT.balanceOf(account);
+            // Iterate through all the tokens owned by the account
             for (uint256 i; i < numOwned; ) {
-                accruedRevenues += _getNftRevenues_idw(
-                    _erc20Revenues[tokenAddress],
+                // Accumulate the ERC20-token rewards of each token owned by the account
+                accruedRewards += _getNftRevenues_idw(
+                    _erc20Rewards[tokenAddress],
                     NFT.tokenOfOwnerByIndex(account, i)
                 );
+                // Increment the index (no need to check for overflow)
                 unchecked {++i;}
             }
         }
     }
 
     /**
-     * @notice Returns the unclaimed revenues accrued by the token `tokenId`.
+     * @notice Returns the unclaimed rewards accrued by the token `tokenId`.
      */
     function nftRevenues(uint256 tokenId) external view returns (uint256) {
-        return _getNftRevenues_idw(_revenues, tokenId);
+        return _getNftRevenues_idw(_rewards, tokenId);
     }
 
     /**
      * @notice ERC20-token version of {nftRevenues}.
-     * @param tokenId Id of the LDP nft.
-     * @param tokenAddress Address of the ERC20 token contract.
+     * @param tokenId Id of the LDP nft
+     * @param tokenAddress Address of the ERC20 token contract
+     * @return The total unclaimed rewards of the specified NFT in the given
+     * ERC20-token
      */
     function nftRevenuesErc20(uint256 tokenId, address tokenAddress)
         external
         view
         returns (uint256)
     {
+        // If the tokenAddress is WETH, always return 0 (there is a separate set of functions for WETH)
         if (tokenAddress == WETH) return 0;
-        else return _getNftRevenues_idw(_erc20Revenues[tokenAddress], tokenId);
+        // Otherwise return the ERC20-token rewards of the specified NFT
+        else return _getNftRevenues_idw(_erc20Rewards[tokenAddress], tokenId);
     }
 
     /**
-     * @notice Returns true if the revenue records of the provided ERC20 token
-     * are up to date.
+     * @notice Returns true if the records of the provided ERC20 token are
+     * up to date.
      * @param tokenAddress Address of the ERC20 token contract.
      */
-    function isErc20RevenueRecordsUpToDate(address tokenAddress)
+    function isErc20RecordsUpToDate(address tokenAddress)
         external
         view
         returns (bool)
@@ -329,25 +398,29 @@ contract LDPRewarderTest is ReentrancyGuard {
         else
             return
                 IERC20(tokenAddress).balanceOf(address(this)) ==
-                _processedErc20Revenues[tokenAddress];
+                _processedErc20Rewards[tokenAddress];
     }
 
     /**
-     * @notice Return the lifetime earnings distributed to NFT holders (ETH).
+     * @notice Return the lifetime rewards distributed to NFT holders (ETH).
+     * @return The total lifetime rewards of the NFT holders
      */
     function collectionEarningsLifetime() external view returns (uint256) {
-        return _revenues.lifetimeEarnings * 10000;
+        return _rewards.lifetimeAccrued * 10000;
     }
 
     /**
-     * @notice Return the lifetime earnings distributed to NFT holders (ERC20).
+     * @notice Return the lifetime rewards distributed to NFT holders (ERC20).
+     * @param tokenContract The address of the ERC20 token contract
+     * @return The total lifetime rewards (in the given ERC20 token) of the NFT
+     * holders
      */
     function collectionEarningsLifetime(address tokenContract)
         external
         view
         returns (uint256)
     {
-        return _erc20Revenues[tokenContract].lifetimeEarnings * 10000;
+        return _erc20Rewards[tokenContract].lifetimeAccrued * 10000;
     }
 
     // =============================================================
@@ -399,7 +472,7 @@ contract LDPRewarderTest is ReentrancyGuard {
     }
 
     /**
-     * @dev Send to `account` all ETH revenues accrued by its tokens.
+     * @dev Send to `account` all ETH rewards accrued by its tokens.
      * @param account Account address
      */
     function _accountCashout_dHm(address account) private {
@@ -408,7 +481,7 @@ contract LDPRewarderTest is ReentrancyGuard {
         for (uint256 i; i < numOwned; ) {
             unchecked {
                 amount += _processWithdrawData_Il8(
-                    _revenues,
+                    _rewards,
                     NFT.tokenOfOwnerByIndex(account, i)
                 );
                 ++i;
@@ -430,7 +503,7 @@ contract LDPRewarderTest is ReentrancyGuard {
         for (uint256 i; i < numOwned; ) {
             unchecked {
                 amount += _processWithdrawData_Il8(
-                    _erc20Revenues[tokenAddress],
+                    _erc20Rewards[tokenAddress],
                     NFT.tokenOfOwnerByIndex(account, i)
                 );
                 ++i;
@@ -440,14 +513,14 @@ contract LDPRewarderTest is ReentrancyGuard {
     }
 
     /**
-     * @dev Send all ETH revenues accrued by the token `tokenId` to its
+     * @dev Send all ETH rewards accrued by the token `tokenId` to its
      * current owner.
      */
     function _nftCashout_M29(uint256 tokenId)
         private
         onlyTokenOwner(tokenId)
     {
-        uint256 amount = _processWithdrawData_Il8(_revenues, tokenId);
+        uint256 amount = _processWithdrawData_Il8(_rewards, tokenId);
         _cashout_qLL({recipient: msg.sender, amount: amount});
     }
 
@@ -461,7 +534,7 @@ contract LDPRewarderTest is ReentrancyGuard {
         onlyTokenOwner(tokenId)
     {
         uint256 amount = _processWithdrawData_Il8(
-            _erc20Revenues[tokenAddress],
+            _erc20Rewards[tokenAddress],
             tokenId
         );
         _cashout_KTv({
@@ -475,7 +548,7 @@ contract LDPRewarderTest is ReentrancyGuard {
      * @dev Send creator revenues to their address.
      */
     function _creatorCashout_89e() private {
-        uint256 earnings = _processWithdrawDataCreator_sFU(_revenues);
+        uint256 earnings = _processWithdrawDataCreator_sFU(_rewards);
         _cashout_qLL({recipient: _creator, amount: earnings});
     }
 
@@ -485,7 +558,7 @@ contract LDPRewarderTest is ReentrancyGuard {
      */
     function _creatorCashout_gl3(address tokenAddress) private {
         uint256 earnings = _processWithdrawDataCreator_sFU(
-            _erc20Revenues[tokenAddress]
+            _erc20Rewards[tokenAddress]
         );
         _cashout_KTv({
             token: tokenAddress,
@@ -503,13 +576,13 @@ contract LDPRewarderTest is ReentrancyGuard {
     function _updateRevenueRecords_tku(uint256 newRevenues) private {
         uint256 holdersCut = _calculateHolderRevenues_x8f(newRevenues);
         unchecked {
-            _revenues.lifetimeEarnings += (holdersCut / 10000);
+            _rewards.lifetimeAccrued += (holdersCut / 10000);
         }
     }
 
     /**
      * @dev Same as {_updateRevenueRecords_tku} but for ERC20 tokens.
-     * @param newRevenues Amount to be added to revenues
+     * @param newRevenues Amount to be added to rewards
      * @param tokenAddress Address of the ERC20 token contract
      * @param tokenBalance Up-to-date token balance of this contract
      */
@@ -520,10 +593,10 @@ contract LDPRewarderTest is ReentrancyGuard {
     ) private {
         uint256 holdersCut = _calculateHolderRevenues_x8f(newRevenues);
         unchecked {
-            _erc20Revenues[tokenAddress].lifetimeEarnings += (holdersCut /
+            _erc20Rewards[tokenAddress].lifetimeAccrued += (holdersCut /
                 10000);
         }
-        _processedErc20Revenues[tokenAddress] = tokenBalance;
+        _processedErc20Rewards[tokenAddress] = tokenBalance;
     }
 
     /**
@@ -537,7 +610,7 @@ contract LDPRewarderTest is ReentrancyGuard {
      */
     function _updateErc20Revenues_a8w(address tokenAddress) private {
         uint256 curBalance = IERC20(tokenAddress).balanceOf(address(this));
-        uint256 processedRevenues = _processedErc20Revenues[tokenAddress];
+        uint256 processedRevenues = _processedErc20Rewards[tokenAddress];
         if (curBalance > processedRevenues) {
             uint256 _newRevenues;
             unchecked {
@@ -553,22 +626,22 @@ contract LDPRewarderTest is ReentrancyGuard {
     }
 
     /**
-     * @dev Called when revenues are claimed: returns the amount of revenues
-     * claimable by the specified token ID and records that these revenues
+     * @dev Called when rewards are claimed: returns the amount of rewards
+     * claimable by the specified token ID and records that these rewards
      * have now been collected.
      * @param tokenId Id of the LDP token
      */
     function _processWithdrawData_Il8(
-        Revenues storage revenueRecords,
+        Rewards storage revenueRecords,
         uint256 tokenId
     ) private returns (uint256 accruedRevenues) {
-        uint256 lifetimeEarnings = revenueRecords.lifetimeEarnings;
+        uint256 lifetimeAccrued = revenueRecords.lifetimeAccrued;
         unchecked {
             accruedRevenues =
-                lifetimeEarnings -
+                lifetimeAccrued -
                 revenueRecords.lifetimeCollected[tokenId];
         }
-        revenueRecords.lifetimeCollected[tokenId] = lifetimeEarnings;
+        revenueRecords.lifetimeCollected[tokenId] = lifetimeAccrued;
     }
 
     /**
@@ -577,10 +650,10 @@ contract LDPRewarderTest is ReentrancyGuard {
      * and records that these revenues have now been collected.
      */
     function _processWithdrawDataCreator_sFU(
-        Revenues storage revenueRecords
+        Rewards storage revenueRecords
     ) private returns (uint256 accruedRevenues) {
         unchecked {
-            uint256 lifetimeEarningsCr = (revenueRecords.lifetimeEarnings *
+            uint256 lifetimeEarningsCr = (revenueRecords.lifetimeAccrued *
                 10000) / 15;
             accruedRevenues =
                 lifetimeEarningsCr -
@@ -590,21 +663,21 @@ contract LDPRewarderTest is ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the unclaimed revenues accrued by the given tokenId.
+     * @dev Returns the unclaimed rewards accrued by the given tokenId.
      */
     function _getNftRevenues_idw(
-        Revenues storage revenueRecords,
+        Rewards storage revenueRecords,
         uint256 tokenId
     ) private view returns (uint256) {
         unchecked {
             return
-                revenueRecords.lifetimeEarnings -
+                revenueRecords.lifetimeAccrued -
                 revenueRecords.lifetimeCollected[tokenId];
         }
     }
 
     /**
-     * @dev Calculate holder revenues from the given amount.
+     * @dev Calculate holder rewards from the given amount.
      * 93.75% to holders, 6.25% to creator
      */
     function _calculateHolderRevenues_x8f(
@@ -638,7 +711,7 @@ contract LDPRewarderTest is ReentrancyGuard {
         uint256 amount
     ) private {
         unchecked {
-            _processedErc20Revenues[token] -= amount;
+            _processedErc20Rewards[token] -= amount;
         }
         bool success = IERC20(token).transfer(recipient, amount);
         if (!success) revert CashoutError();

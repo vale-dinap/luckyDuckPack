@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
-// TODO: replace ALL "REPLACE_ME" strings and double check all hardcoded values
-
 /**
  * @title Lucky Duck Pack NFT contract
  *
@@ -83,10 +81,10 @@ contract LuckyDuckPack is
     uint256 public immutable PROVENANCE_TIMESTAMP;
     // Deployer address
     address public immutable DEPLOYER;
-    // Where the unrevealed token data is stored
-    string private constant _UNREVEALED_URI = "REPLACE_ME";
     // Location where the collection information is stored
     string private _contract_URI;
+    // Where the unrevealed token data is stored
+    string private _unrevealed_URI;
     // Location prefix for token metadata (and images)
     string private _baseURI_IPFS; // IPFS
     string private _baseURI_AR; // Arweave
@@ -200,6 +198,7 @@ contract LuckyDuckPack is
      * @param rewarderAddress The address of the rewarder contract, which will receive
      * royalties
      * @param contract_URI The URI of the contract metadata
+     * @param unrevealed_URI The URI to be returned for all tokens before reveal
      * @param baseURI_IPFS The base URI for the IPFS storage of token metadata
      * @dev The function reverts if the contract doesn't have sufficient LINK balance
      * for the collection reveal.
@@ -208,18 +207,21 @@ contract LuckyDuckPack is
         address minterAddress,
         address rewarderAddress,
         string calldata contract_URI,
+        string calldata unrevealed_URI,
         string calldata baseURI_IPFS
     ) external onlyOwner {
         // Validate input
         if(minterAddress==address(0)) revert EmptyInput(0);
         if(rewarderAddress==address(0)) revert EmptyInput(1);
         if(bytes(contract_URI).length==0) revert EmptyInput(2);
-        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(3);
+        if(bytes(unrevealed_URI).length==0) revert EmptyInput(3);
+        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(4);
         /// Ensure the contract has enough LINK tokens for the collection reveal
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
         // Store the provided data
         minterContract = minterAddress;
         _contract_URI = contract_URI;
+        _unrevealed_URI = unrevealed_URI;
         _baseURI_IPFS = baseURI_IPFS;
         // Set the default royalty for the rewarder address
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
@@ -357,7 +359,7 @@ contract LuckyDuckPack is
         return
             _isRevealed() // If revealed,
                 ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
-                : _UNREVEALED_URI; // otherwise return the unrevealedURI.
+                : _unrevealed_URI; // otherwise return the unrevealedURI.
     }
 
     // =============================================================

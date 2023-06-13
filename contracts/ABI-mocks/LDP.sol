@@ -34,10 +34,10 @@ contract MockLDP is
     uint256 public immutable PROVENANCE_TIMESTAMP;
     // Deployer address
     address public immutable DEPLOYER;
-    // Where the unrevealed token data is stored
-    string private constant _UNREVEALED_URI = "REPLACE_ME_WITH_URI";
     // Location where the collection information is stored
     string private _contract_URI;
+    // Where the unrevealed token data is stored
+    string private _unrevealed_URI;
     // Location prefix for token metadata (and images)
     string private _baseURI_IPFS; // IPFS
     string private _baseURI_AR; // Arweave
@@ -159,18 +159,21 @@ contract MockLDP is
         address minterAddress,
         address rewarderAddress,
         string calldata contract_URI,
+        string calldata unrevealed_URI,
         string calldata baseURI_IPFS
     ) external onlyOwner {
         // Validate input
         if(minterAddress==address(0)) revert EmptyInput(0);
         if(rewarderAddress==address(0)) revert EmptyInput(1);
         if(bytes(contract_URI).length==0) revert EmptyInput(2);
-        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(3);
+        if(bytes(unrevealed_URI).length==0) revert EmptyInput(3);
+        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(4);
         /// Ensure the contract has enough LINK tokens for the collection reveal
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
         // Store the provided data
         minterContract = minterAddress;
         _contract_URI = contract_URI;
+        _unrevealed_URI = unrevealed_URI;
         _baseURI_IPFS = baseURI_IPFS;
         // Set the default royalty for the rewarder address
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
@@ -308,7 +311,7 @@ contract MockLDP is
         return
             _isRevealed() // If revealed,
                 ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
-                : _UNREVEALED_URI; // otherwise return the unrevealedURI.
+                : _unrevealed_URI; // otherwise return the unrevealedURI.
     }
 
     // =============================================================

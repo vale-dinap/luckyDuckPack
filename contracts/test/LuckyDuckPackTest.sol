@@ -45,10 +45,10 @@ contract LuckyDuckPackTest is
     string public constant PROVENANCE = "a10f0c8e99734955d7ff53ac815a1d95aa1daa413e1d6106cb450d584c632b0b";
     // When the provenance record was stored in the smart-contract
     uint256 public immutable PROVENANCE_TIMESTAMP;
-    // Where the unrevealed token data is stored
-    string private constant _UNREVEALED_URI = "unrevealedURI_string";
     // Location where the collection information is stored
     string private _contract_URI;
+    // Where the unrevealed token data is stored
+    string private _unrevealed_URI;
     // Location prefix for token metadata (and images)
     string private _baseURI_IPFS; // IPFS
     string private _baseURI_AR; // Arweave
@@ -179,21 +179,25 @@ contract LuckyDuckPackTest is
         address minterAddress,
         address rewarderAddress,
         string calldata contract_URI,
+        string calldata unrevealed_URI,
         string calldata baseURI_IPFS
     ) external onlyOwner {
-        // Input checks
+        // Validate input
         if(minterAddress==address(0)) revert EmptyInput(0);
         if(rewarderAddress==address(0)) revert EmptyInput(1);
         if(bytes(contract_URI).length==0) revert EmptyInput(2);
-        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(3);
-        // Make sure that the contract has enough LINK tokens for collection reveal
+        if(bytes(unrevealed_URI).length==0) revert EmptyInput(3);
+        if(bytes(baseURI_IPFS).length==0) revert EmptyInput(4);
+        /// Ensure the contract has enough LINK tokens for the collection reveal
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
-        // Store data
+        // Store the provided data
         minterContract = minterAddress;
         _contract_URI = contract_URI;
+        _unrevealed_URI = unrevealed_URI;
         _baseURI_IPFS = baseURI_IPFS;
+        // Set the default royalty for the rewarder address
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
-        // Burn admin keys
+        // Burn admin keys to make the data effectively immutable
         renounceOwnership();
     }
 
@@ -278,7 +282,7 @@ contract LuckyDuckPackTest is
         return
             _isRevealed() // If revealed,
                 ? string(abi.encodePacked(_actualBaseURI(), revealedId(id).toString())) // return baseURI+revealedId,
-                : _UNREVEALED_URI; // otherwise return the unrevealedURI.
+                : _unrevealed_URI; // otherwise return the unrevealedURI.
     }
 
     /**

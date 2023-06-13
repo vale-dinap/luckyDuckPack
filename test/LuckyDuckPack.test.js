@@ -102,6 +102,7 @@ contract("Token contract", async (accounts) => {
         minterContract.address,
         rewarderContract.address,
         "contractUri_string",
+        "unrevealedUri_string",
         "baseUri_IPFS_string",
       ];
     });
@@ -205,6 +206,7 @@ contract("Token contract", async (accounts) => {
         minterAddr,
         rewarderContract.address,
         "contractUri_string",
+        "unrevealedUri_string",
         "baseUri_IPFS_string",
       ];
       // Initialize the contract
@@ -270,6 +272,7 @@ contract("Token contract", async (accounts) => {
         minterAddr,
         rewarderContract.address,
         "contractUri_string",
+        "unrevealedUri_string",
         "baseUri_IPFS_string",
       ];
       // Initialize the contract
@@ -346,6 +349,7 @@ contract("Token contract", async (accounts) => {
         minterAddr,
         rewarderContract.address,
         "contractUri_string",
+        "unrevealedUri_string",
         "baseUri_IPFS_string",
       ];
       // Initialize the contract
@@ -417,6 +421,7 @@ contract("Token contract", async (accounts) => {
     beforeEach(async function () {
       maxSupply = 25;
       contractUri = "contractUri_string";
+      unrevealedUri = "unrevealedUri_string";
       baseUriIPFS = "baseUri_IPFS_string";
       baseUriArweave = "ARWEAVE_MANIFEST/";
       mockRandomness = 9;
@@ -435,6 +440,7 @@ contract("Token contract", async (accounts) => {
         minterAddr,
         rewarderContract.address,
         contractUri,
+        unrevealedUri,
         baseUriIPFS,
       ];
       // Initialize the contract
@@ -451,7 +457,7 @@ contract("Token contract", async (accounts) => {
         this.tokenUri = await nftContract.tokenURI(i);
         assert.equal(
           this.tokenUri,
-          "unrevealedURI_string",
+          "unrevealedUri_string",
           "URI of token ID " + String(i) + " is not the Unrevealed URI"
         );
       }
