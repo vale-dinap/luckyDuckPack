@@ -45,25 +45,26 @@ import "./lib/interfaces/ILDP.sol";
  * the power to fix, alter, or control its behavior.
  *
  * The creator of the Software is not a law firm and this disclaimer does not
- * constitute legal advice. The laws and regulations applicable to smart contracts
- * and blockchain technologies vary by jurisdiction. As such, you are strongly
- * advised to consult with your legal counsel before engaging in any smart
- * contract or blockchain-related activities.
+ * constitute legal advice. The laws and regulations applicable to smart
+ * contracts and blockchain technologies vary by jurisdiction. As such, you
+ * are strongly advised to consult with your legal counsel before engaging
+ * in any smart contract or blockchain-related activities.
  *
- * The creator of the Software disclaims all responsibility and liability for the
- * accuracy, applicability, or completeness of the Software. Any use or reliance
- * on the Software or any part thereof is strictly at your own risk, and you fully
- * accept and assume all risks associated with any such reliance. This includes,
- * but is not limited to, responsibility for the consequences of any errors,
- * inaccuracies, omissions, or other defects that may be present in the Software.
+ * The creator of the Software disclaims all responsibility and liability for
+ * the accuracy, applicability, or completeness of the Software. Any use or
+ * reliance on the Software or any part thereof is strictly at your own risk,
+ * and you fully accept and assume all risks associated with any such reliance.
+ * This includes, but is not limited to, responsibility for the consequences
+ * of any errors, inaccuracies, omissions, or other defects that may be
+ * present in the Software.
  *
- * You agree to indemnify and hold harmless the creator of the Software from and
- * against any and all losses, liabilities, claims, damages, costs, and expenses,
- * including legal fees and disbursements, arising out of or resulting from your
- * use of the Software.
+ * You agree to indemnify and hold harmless the creator of the Software from
+ * and against any and all losses, liabilities, claims, damages, costs, and
+ * expenses, including legal fees and disbursements, arising out of or
+ * resulting from your use of the Software.
  * 
- * By using the Software, you acknowledge that you have read and understood this
- * disclaimer, and agree to be bound by its terms.
+ * By using the Software, you acknowledge that you have read and understood
+ * this disclaimer, and agree to be bound by its terms.
  * --------------------------------------------------------------------------
  */
 contract LDPMinter is Ownable, ReentrancyGuard {
@@ -72,10 +73,10 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     //                     CONTRACT VARIABLES
     // =============================================================
 
-    // Pricing - hard-coded for transparency and efficiency - NOTE: Current prices are placeholders!
-    uint256 private constant _PRICE1 = 0.5 ether; // Price for tokens 1 to 3333
-    uint256 private constant _PRICE2 = 0.8 ether; // Price for tokens 3334 to 6666
-    uint256 private constant _PRICE3 = 1.3 ether; // Price for tokens 6667 to 10000
+    // Pricing - hard-coded for transparency and efficiency
+    uint256 private constant _PRICE1 = 0.8 ether; // Price for tokens 1 to 3333
+    uint256 private constant _PRICE2 = 1.2 ether; // Price for tokens 3334 to 6666
+    uint256 private constant _PRICE3 = 1.6 ether; // Price for tokens 6667 to 10000
     // Number of tokens reserved for the team
     uint256 private constant _TEAM_RESERVED = 35;
     // Instance of the token contract
@@ -252,7 +253,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     function _processWithdraw_ama(
         uint256 newTokensSold
     ) private returns (bool creatorPaid, bool rewarderPaid) {
-        uint256 incentivesPerSale = 0.05 ether; // Note: Placeholder value. Ideally, ~10-15% of the average sale price.
+        uint256 incentivesPerSale = 0.15 ether;
         uint256 totalIncentives = incentivesPerSale * newTokensSold;
         uint256 _bal = address(this).balance;
         if (totalIncentives < _bal) {
