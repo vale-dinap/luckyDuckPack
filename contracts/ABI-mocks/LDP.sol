@@ -152,15 +152,17 @@ contract MockLDP is
      * royalties
      * @param contract_URI The URI of the contract metadata
      * @param baseURI_IPFS The base URI for the IPFS storage of token metadata
+     * @param baseURI_AR The base URI for the Arweave storage of token metadata
      * @dev The function reverts if the contract doesn't have sufficient LINK balance
-     * for the collection reveal.
+     * for the collection reveal, or if any of the parameters has empty data.
      */
     function initialize(
         address minterAddress,
         address rewarderAddress,
         string calldata contract_URI,
         string calldata unrevealed_URI,
-        string calldata baseURI_IPFS
+        string calldata baseURI_IPFS,
+        string calldata baseURI_AR
     ) external onlyOwner {
         // Validate input
         if(minterAddress==address(0)) revert EmptyInput(0);
@@ -168,6 +170,7 @@ contract MockLDP is
         if(bytes(contract_URI).length==0) revert EmptyInput(2);
         if(bytes(unrevealed_URI).length==0) revert EmptyInput(3);
         if(bytes(baseURI_IPFS).length==0) revert EmptyInput(4);
+        if(bytes(baseURI_AR).length==0) revert EmptyInput(5);
         /// Ensure the contract has enough LINK tokens for the collection reveal
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
         // Store the provided data
@@ -175,6 +178,7 @@ contract MockLDP is
         _contract_URI = contract_URI;
         _unrevealed_URI = unrevealed_URI;
         _baseURI_IPFS = baseURI_IPFS;
+        _baseURI_AR = baseURI_AR;
         // Set the default royalty for the rewarder address
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
         // Burn admin keys to make the data effectively immutable
@@ -278,19 +282,6 @@ contract MockLDP is
     function toggleArweaveUri() external {
         require(msg.sender == DEPLOYER, "Permission denied.");
         useArweaveUri = !useArweaveUri;
-    }
-
-    /**
-     * @notice Sets the baseURI for the alternative off-chain data storage
-     * location (Arweave).
-     * If already set, the function reverts to prevent unauthorized modifications.
-     * This function can only be called by the contract deployer for security
-     * reasons.
-     */
-    function setArweaveBaseUri(string calldata baseURI_AR) external {
-        require(msg.sender == DEPLOYER, "Permission denied.");
-        require(bytes(_baseURI_AR).length==0, "Override denied.");
-        _baseURI_AR = baseURI_AR;
     }
 
     /**

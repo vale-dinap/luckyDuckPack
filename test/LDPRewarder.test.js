@@ -56,6 +56,7 @@ contract("Rewarder contract", async (accounts) => {
       "some_uri",
       "some_uri",
       "some_uri",
+      "some_uri"
     ];
     // Initialize the contract
     await linkContract.transfer(nftContract.address, revealFee, {

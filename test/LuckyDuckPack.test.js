@@ -104,6 +104,7 @@ contract("Token contract", async (accounts) => {
         "contractUri_string",
         "unrevealedUri_string",
         "baseUri_IPFS_string",
+        "baseUri_AR_string"
       ];
     });
 
@@ -208,6 +209,7 @@ contract("Token contract", async (accounts) => {
         "contractUri_string",
         "unrevealedUri_string",
         "baseUri_IPFS_string",
+        "baseUri_AR_string"
       ];
       // Initialize the contract
       await linkContract.transfer(nftContract.address, revealFee, {
@@ -274,6 +276,7 @@ contract("Token contract", async (accounts) => {
         "contractUri_string",
         "unrevealedUri_string",
         "baseUri_IPFS_string",
+        "baseUri_AR_string",
       ];
       // Initialize the contract
       await linkContract.transfer(nftContract.address, revealFee, {
@@ -351,6 +354,7 @@ contract("Token contract", async (accounts) => {
         "contractUri_string",
         "unrevealedUri_string",
         "baseUri_IPFS_string",
+        "baseUri_AR_string"
       ];
       // Initialize the contract
       await linkContract.transfer(nftContract.address, revealFee, {
@@ -423,7 +427,7 @@ contract("Token contract", async (accounts) => {
       contractUri = "contractUri_string";
       unrevealedUri = "unrevealedUri_string";
       baseUriIPFS = "baseUri_IPFS_string";
-      baseUriArweave = "ARWEAVE_MANIFEST/";
+      baseUriArweave = "baseUri_AR_string";
       mockRandomness = 9;
       // Create contracts
       [VRFContract, linkContract] = await initChainlinkMocks(admin);
@@ -442,6 +446,7 @@ contract("Token contract", async (accounts) => {
         contractUri,
         unrevealedUri,
         baseUriIPFS,
+        baseUriArweave
       ];
       // Initialize the contract
       await linkContract.transfer(nftContract.address, revealFee, {
@@ -485,29 +490,9 @@ contract("Token contract", async (accounts) => {
       }
     });
 
-    it("Only deployer address can set the Arweave baseURI (but cannot override it)", async () => {
-      this.deployerAddress = await nftContract.DEPLOYER();
-      await expectRevert(
-        nftContract.setArweaveBaseUri(baseUriArweave, { from: userA }),
-        "Permission denied."
-      );
-      await nftContract.setArweaveBaseUri(baseUriArweave, {
-        from: this.deployerAddress,
-      });
-      await expectRevert(
-        nftContract.setArweaveBaseUri(baseUriArweave, {
-          from: this.deployerAddress,
-        }),
-        "Override denied."
-      );
-    });
-
     it("Deployer address can toggle between IPFS and Arweave baseURI", async () => {
       this.deployerAddress = await nftContract.DEPLOYER();
       this.testToken = 5;
-      await nftContract.setArweaveBaseUri(baseUriArweave, {
-        from: this.deployerAddress,
-      });
       // Reveal the collection
       this.truffleReceipt = await nftContract.reveal();
       this.requestId = String(this.truffleReceipt.logs[0].args[0]);

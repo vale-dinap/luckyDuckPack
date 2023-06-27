@@ -180,7 +180,8 @@ contract LuckyDuckPackTest is
         address rewarderAddress,
         string calldata contract_URI,
         string calldata unrevealed_URI,
-        string calldata baseURI_IPFS
+        string calldata baseURI_IPFS,
+        string calldata baseURI_AR
     ) external onlyOwner {
         // Validate input
         if(minterAddress==address(0)) revert EmptyInput(0);
@@ -188,6 +189,7 @@ contract LuckyDuckPackTest is
         if(bytes(contract_URI).length==0) revert EmptyInput(2);
         if(bytes(unrevealed_URI).length==0) revert EmptyInput(3);
         if(bytes(baseURI_IPFS).length==0) revert EmptyInput(4);
+        if(bytes(baseURI_AR).length==0) revert EmptyInput(5);
         /// Ensure the contract has enough LINK tokens for the collection reveal
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK for reveal");
         // Store the provided data
@@ -195,6 +197,7 @@ contract LuckyDuckPackTest is
         _contract_URI = contract_URI;
         _unrevealed_URI = unrevealed_URI;
         _baseURI_IPFS = baseURI_IPFS;
+        _baseURI_AR = baseURI_AR;
         // Set the default royalty for the rewarder address
         _setDefaultRoyalty(rewarderAddress, 800); // 800 basis points (8%)
         // Burn admin keys to make the data effectively immutable
@@ -213,19 +216,6 @@ contract LuckyDuckPackTest is
     function toggleArweaveUri() external {
         require(msg.sender == DEPLOYER, "Permission denied.");
         useArweaveUri = !useArweaveUri;
-    }
-
-    /**
-     * @notice Set the baseURI of the alternative location where the offchain
-     * data is stored (Arweave).
-     * If already set, the function reverts, so it can be called only once.
-     * For security reasons, only the contract deployer is allowed to call this
-     * function.
-     */
-    function setArweaveBaseUri(string calldata baseURI_AR) external {
-        require(msg.sender == DEPLOYER, "Permission denied.");
-        require(bytes(_baseURI_AR).length==0, "Override denied.");
-        _baseURI_AR = baseURI_AR;
     }
 
     /**
