@@ -39,7 +39,7 @@ import "./lib/interfaces/ILDP.sol";
  * distributing the Software be liable for any damages or other liability,
  * whether in contract, tort or otherwise, arising from, out of, or in
  * connection with the Software or the use or other dealings in the Software.
- * 
+ *
  * The Software is decentralized and the admin keys have been burned following
  * deployment, meaning the creator no longer has any special privileges, nor
  * the power to fix, alter, or control its behavior.
@@ -62,7 +62,7 @@ import "./lib/interfaces/ILDP.sol";
  * and against any and all losses, liabilities, claims, damages, costs, and
  * expenses, including legal fees and disbursements, arising out of or
  * resulting from your use of the Software.
- * 
+ *
  * By using the Software, you acknowledge that you have read and understood
  * this disclaimer, and agree to be bound by its terms.
  * --------------------------------------------------------------------------
@@ -85,8 +85,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     address public immutable REWARDER_ADDRESS;
     // Collection creator address
     address private _creator;
-    // Total supply at last proceeds withdrawal - tracks incentives already sent
-    uint256 private _supplyAtLastWithdraw;
     // If set to 'true' by admin, minting is enabled and cannot be disabled
     bool public mintingStarted;
 
@@ -118,7 +116,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         address nftContract,
         address rewarderAddress,
         address creatorAddress
-    ){
+    ) {
         NFT = ILDP(nftContract);
         REWARDER_ADDRESS = rewarderAddress;
         _creator = creatorAddress;
@@ -156,7 +154,6 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     function startMinting() external onlyOwner {
         if (mintingStarted) revert MintingAlreadyStarted();
         mintingStarted = true;
-        _supplyAtLastWithdraw = _TEAM_RESERVED; // These aren't paid
         NFT.mint_Qgo(msg.sender, _TEAM_RESERVED);
         emit MintingStarted();
     }
@@ -182,7 +179,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // =============================================================
 
     /**
-     * @notice Set the creator address.
+     * @notice Set/amend the creator address.
      */
     function setCreatorAddress(address creatorAddr) external onlyOwner {
         if (creatorAddr == address(0)) revert InputIsZero();
@@ -194,15 +191,16 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Reverts if the transfers fail.
      */
     function withdrawProceeds() external {
+        // Checks
         if (!mintingStarted) revert MintingNotStarted();
         if (_msgSender() != owner())
-            require(_msgSender() == _creator, "Caller is not admin nor creator");
-        uint256 currentSupply = NFT.totalSupply();
-        uint256 newSales = currentSupply - _supplyAtLastWithdraw;
-        _supplyAtLastWithdraw = currentSupply; // Storage variable update
+            require(
+                _msgSender() == _creator,
+                "Caller is not admin nor creator"
+            );
         // Actual withdraw
-        (bool creatorPaid, bool rewarderPaid) = _processWithdraw_ama(newSales);
-        // Revert if one or both payments failed
+        (bool creatorPaid, bool rewarderPaid) = _processWithdraw_SVt();
+        // Revert if any payments failed
         if (!(creatorPaid && rewarderPaid))
             revert PaymentError(creatorPaid, rewarderPaid);
     }
@@ -219,13 +217,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function emergencyWithdraw() external onlyOwner {
         // Revert if the function is called before the minting process ends
-        uint256 currentSupply = NFT.totalSupply();
-        require(currentSupply == NFT.MAX_SUPPLY(), "Minting still in progress");
+        require(
+            NFT.totalSupply() == NFT.MAX_SUPPLY(),
+            "Minting still in progress"
+        );
         // Attempt the normal withdraw first: if succeeds, emergency actions won't be performed
-        uint256 newSales = currentSupply - _supplyAtLastWithdraw;
-        _supplyAtLastWithdraw = currentSupply;
-        (bool creatorPaid, bool rewarderPaid) = _processWithdraw_ama(newSales);
-        // If one of the two payments failed, send the remaining balance to admin
+        (bool creatorPaid, bool rewarderPaid) = _processWithdraw_SVt();
+        // If any of the two payments failed, send the remaining balance to admin
         if (!(creatorPaid && rewarderPaid)) {
             uint256 _bal = address(this).balance;
             payable(_msgSender()).transfer(_bal);
@@ -248,19 +246,16 @@ contract LDPMinter is Ownable, ReentrancyGuard {
 
     /**
      * @dev Send proceeds to creator address and incentives to rewarder contract.
-     * @param newTokensSold Number of new sales
      */
-    function _processWithdraw_ama(
-        uint256 newTokensSold
-    ) private returns (bool creatorPaid, bool rewarderPaid) {
-        uint256 incentivesPerSale = 0.15 ether;
-        uint256 totalIncentives = incentivesPerSale * newTokensSold;
-        uint256 _bal = address(this).balance;
-        if (totalIncentives < _bal) {
-            uint256 creatorProceeds = _bal - totalIncentives;
-            (rewarderPaid, ) = REWARDER_ADDRESS.call{value: totalIncentives}("");
-            (creatorPaid, ) = _creator.call{value: creatorProceeds}("");
-        }
+    function _processWithdraw_SVt()
+        private
+        returns (bool creatorPaid, bool rewarderPaid)
+    {
+        uint256 balance = address(this).balance;
+        uint256 incentives = balance / 10;
+        uint256 creatorProceeds = balance - incentives;
+        (rewarderPaid, ) = REWARDER_ADDRESS.call{value: incentives}("");
+        (creatorPaid, ) = _creator.call{value: creatorProceeds}("");
     }
 }
 
