@@ -74,11 +74,14 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // =============================================================
 
     // Pricing - hard-coded for transparency and efficiency
-    uint256 private constant _PRICE1 = 0.8 ether; // Price for tokens 1 to 3333
-    uint256 private constant _PRICE2 = 1.2 ether; // Price for tokens 3334 to 6666
-    uint256 private constant _PRICE3 = 1.6 ether; // Price for tokens 6667 to 10000
+    uint256 private constant _PRICE1 = 0.25 ether; // Price for tokens 1 to 3333
+    uint256 private constant _PRICE2 = 0.75 ether; // Price for tokens 3334 to 6666
+    uint256 private constant _PRICE3 = 1.25 ether; // Price for tokens 6667 to 10000
+    uint256 private constant _RESTING_PRICEA = 0.075 ether; // Resting price of the first Dutch Auction
+    uint256 private constant _RESTING_PRICEB = 0.01 ether; // Resting price of the second Dutch Auction
+    uint256 private constant _RESTING_PRICEC = 0.0025 ether; // Resting price of the third Dutch Auction
     // Number of tokens reserved for the team
-    uint256 private constant _TEAM_RESERVED = 35;
+    uint256 private constant _TEAM_RESERVED = 50;
     // Instance of the token contract
     ILDP public immutable NFT;
     // LDP Rewarder contract address
