@@ -9,9 +9,19 @@ contract LDPRandomDraw is
     VRFConsumerBase                     // Chainlink Random
 {
 
+    struct DrawInfo {
+        uint16 id;
+        uint64 requestTimestamp;
+        uint128 randomness;
+        uint16 numParticipants;
+        uint16 numWinners;
+    }
+
     // =============================================================
     //                     CONTRACT VARIABLES
     // =============================================================
+
+    mapping(bytes32 => DrawInfo) public drawInfo; // Draw data hash => DrawInfo
 
     // Chainlink VRF (Verifiable Random Function)
     address private constant VRFcoordinator = 0xf0d54349aDdcf704F77AE15b96510dEA15cb7952; // Contract
@@ -28,6 +38,10 @@ contract LDPRandomDraw is
             0x514910771AF9Ca656af840dff83E8264EcF986CA // LINK Token address
         )
     {}
+
+    function requestWinner(bytes32 drawDataHash, uint256 numParticipants, uint256 numWinners) external onlyOwner {
+        
+    }
 
     /**
      * @notice Callback function used by Chainlink VRF to provide the random number.
