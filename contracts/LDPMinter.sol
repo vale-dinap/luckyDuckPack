@@ -70,29 +70,57 @@ import "./lib/interfaces/ILDP.sol";
 contract LDPMinter is Ownable, ReentrancyGuard {
 
     // =============================================================
-    //                     CONTRACT VARIABLES
+    //                         CUSTOM TYPES
     // =============================================================
 
-    // Pricing - hard-coded for transparency and efficiency
-    uint256 private constant _PRICE1 = 0.25 ether; // Price for tokens 1 to 3333
-    uint256 private constant _PRICE2 = 0.75 ether; // Price for tokens 3334 to 6666
-    uint256 private constant _PRICE3 = 1.25 ether; // Price for tokens 6667 to 10000
-    uint256 private constant _RESTING_PRICEA = 0.075 ether; // Resting price of the first Dutch Auction
-    uint256 private constant _RESTING_PRICEB = 0.01 ether; // Resting price of the second Dutch Auction
-    uint256 private constant _RESTING_PRICEC = 0.0025 ether; // Resting price of the third Dutch Auction
+    /**
+     * @dev A struct that contains the parameters for conducting a Dutch Auction. 
+     * In a Dutch Auction, the auction starts at a high price which continuously 
+     * (or at defined intervals) drops until it reaches a specified resting price or 
+     * the auction ends.
+     */
+    struct DutchAuction {
+        uint256 startPrice; // Initial price of the Dutch Auction
+        uint256 restingPrice; // End price of the Dutch Auction
+        uint256 startTime; // Time at which the price starts decaying
+        uint256 endTime; // Time at which the resting price is reached
+        uint256 timeStep; // Price update timestep
+    }
+
+    // =============================================================
+    //                   CONSTANTS / IMMUTABLES
+    // =============================================================
+
+    // Prices during the first minting phase (standard sale)
+    uint256 private constant _SALE_PRICE1 = 0.25 ether; // Price for tokens 1 to 3333
+    uint256 private constant _SALE_PRICE2 = 0.75 ether; // Price for tokens 3334 to 6666
+    uint256 private constant _SALE_PRICE3 = 1.25 ether; // Price for tokens 6667 to 10000
+    // Resting prices for the second minting phase (Dutch auctions) - auctions kick in if the collection isn't sold out during the first phase
+    uint256 private constant _AUCTION1_RESTING_PRICE = 0.075 ether; // Resting price of the first Dutch Auction
+    uint256 private constant _AUCTION2_RESTING_PRICE = 0.025 ether; // Resting price of the second Dutch Auction
+    // Start times and durations of the Dutch auctions
+    uint256 private constant _AUCTION1_START_DELAY = 2 days;
+    uint256 private constant _AUCTION2_START_DELAY = 2 days;
+    uint256 private constant _AUCTIONS_DURATION = 1 days;
+    uint256 private constant _AUCTIONS_TIMESTEP = 30 minutes;
     // Number of tokens reserved for the team
     uint256 private constant _TEAM_RESERVED = 50;
     // Instance of the token contract
     ILDP public immutable NFT;
     // LDP Rewarder contract address
     address public immutable REWARDER_ADDRESS;
-    // Collection creator address
-    address private _creator;
-    // If set to 'true' by admin, minting is enabled and cannot be disabled
-    bool public mintingStarted;
 
     // =============================================================
-    //                  CUSTOM ERRORS AND EVENTS
+    //                     CONTRACT VARIABLES
+    // =============================================================
+
+    // Collection creator address
+    address private _creator;
+    // The time when the minting has started
+    uint256 public mintingStartTime;
+
+    // =============================================================
+    //                 CUSTOM ERRORS AND EVENTS
     // =============================================================
 
     event MintingStarted(); // Emitted when the minting is opended
@@ -135,13 +163,14 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function mint(uint256 amount) external payable nonReentrant {
         // Revert if minting hasn't started
-        if (!mintingStarted) revert MintingNotStarted();
+        if (mintingStartTime == 0) revert MintingNotStarted();
         // Revert if attempting to mint more than 10 tokens at once
         if (amount > 10) revert MaxMintsPerCallExceeded();
         // Revert if underpaying
+        uint256 priceTotal = _currentPrice_t6y() * amount;
         unchecked {
-            if (msg.value < _currentPrice_t6y() * amount)
-                revert Underpaid(msg.value, _currentPrice_t6y() * amount);
+            if (msg.value < priceTotal)
+                revert Underpaid(msg.value, priceTotal);
         }
         // Finally, mint the tokens
         NFT.mint_Qgo(msg.sender, amount);
@@ -155,8 +184,8 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * mint more than [_TEAM_RESERVED] free tokens.
      */
     function startMinting() external onlyOwner {
-        if (mintingStarted) revert MintingAlreadyStarted();
-        mintingStarted = true;
+        if (mintingStartTime != 0) revert MintingAlreadyStarted();
+        mintingStartTime = block.timestamp;
         NFT.mint_Qgo(msg.sender, _TEAM_RESERVED);
         emit MintingStarted();
     }
@@ -174,6 +203,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @notice Get the current price.
      */
     function currentPrice() external view returns (uint256) {
+        if (mintingStartTime==0) return _SALE_PRICE1;
         return _currentPrice_t6y();
     }
 
@@ -195,7 +225,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      */
     function withdrawProceeds() external {
         // Checks
-        if (!mintingStarted) revert MintingNotStarted();
+        if (mintingStartTime == 0) revert MintingNotStarted();
         if (_msgSender() != owner())
             require(
                 _msgSender() == _creator,
@@ -234,17 +264,111 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     // =============================================================
-    //                       PRIVATE FUNCTIONS
+    //                      INTERNAL LOGICS
     // =============================================================
 
     /**
-     * @dev Returns the current price (depending on the remaining supply).
+     * @dev Returns the current price.
      */
     function _currentPrice_t6y() private view returns (uint256) {
+        uint256 mintingStart = mintingStartTime;
+        uint256 cTime = block.timestamp;
+        uint256 auction1StartTime;
+        unchecked {
+            auction1StartTime = mintingStart + _AUCTION1_START_DELAY;
+        }
+        if (cTime < auction1StartTime) return _salePrice_gn2();
+        // If sale phase is over, compute and return price from auction 1
+        uint256 auction1EndTime;
+        unchecked {
+            auction1EndTime = auction1StartTime + _AUCTIONS_DURATION;
+        }
+        if (cTime < auction1EndTime)
+            return
+                _dutchAuctionPrice_Ts0(
+                    DutchAuction({
+                        startPrice: _SALE_PRICE3,
+                        restingPrice: _AUCTION1_RESTING_PRICE,
+                        startTime: auction1StartTime,
+                        endTime: auction1EndTime,
+                        timeStep: _AUCTIONS_TIMESTEP
+                    }),
+                    cTime
+                );
+        // If aunction 1 is over, compute and return price from auction 2
+        uint256 auction2StartTime;
+        uint256 auction2EndTime;
+        unchecked {
+            auction2StartTime = auction1EndTime + _AUCTION2_START_DELAY;
+            auction2EndTime = auction2StartTime + _AUCTIONS_DURATION;
+        }
+        return
+            _dutchAuctionPrice_Ts0(
+                DutchAuction({
+                    startPrice: _AUCTION1_RESTING_PRICE,
+                    restingPrice: _AUCTION2_RESTING_PRICE,
+                    startTime: auction2StartTime,
+                    endTime: auction2EndTime,
+                    timeStep: _AUCTIONS_TIMESTEP
+                }),
+                cTime
+            );
+    }
+
+    /**
+     * @dev Calculates and returns the current price in a Dutch auction.
+     * The price starts at a predefined high value and decreases in discrete steps
+     * at regular intervals until the auction ends, or until the price reaches a
+     * predefined resting price (whichever happens first).
+     *
+     * @param _auctionInfo A 'DutchAuction' struct containing information about the auction
+     * @param currentTime The current timestamp to be used for price calculation
+     * @return The current price
+     */
+    function _dutchAuctionPrice_Ts0(
+        DutchAuction memory _auctionInfo,
+        uint256 currentTime
+    ) private pure returns (uint256) {
+        // If the auction has not started yet (i.e., current time is before the auction start time), return the start price
+        if (currentTime < _auctionInfo.startTime)
+            return _auctionInfo.startPrice;
+        uint256 stepsPassed;
+        uint256 priceDecrement;
+        // Unchecked block is used to ignore overflow/underflow conditions for more gas-efficient code
+        // This is safe in our case, as the first IF statement of this function ensures that the auction has started
+        // (i.e., block.timestamp is never less than startTime) by the time this part of the code is executed
+        unchecked {
+            // Calculate the number of time steps that have passed since the auction started
+            stepsPassed =
+                (currentTime - _auctionInfo.startTime) /
+                _auctionInfo.timeStep;
+            // Calculate how much the price should have decreased by now
+            priceDecrement =
+                ((_auctionInfo.startPrice - _auctionInfo.restingPrice) /
+                    ((_auctionInfo.endTime - _auctionInfo.startTime) /
+                        _auctionInfo.timeStep)) *
+                stepsPassed;
+        }
+        // If the starting price minus the decrement is greater than the resting price, return the decremented price
+        if (
+            _auctionInfo.startPrice >
+            (_auctionInfo.restingPrice + priceDecrement)
+        ) {
+            return _auctionInfo.startPrice - priceDecrement;
+            // If not, return the resting price
+        } else {
+            return _auctionInfo.restingPrice;
+        }
+    }
+
+    /**
+     * @dev Returns the current price (depending on the remaining supply) during the first minting phase (standard sale).
+     */
+    function _salePrice_gn2() private view returns (uint256) {
         uint256 curSupply = NFT.totalSupply();
-        if (curSupply < 3333) return _PRICE1;
-        else if (curSupply < 6666) return _PRICE2;
-        else return _PRICE3;
+        if (curSupply < 3333) return _SALE_PRICE1;
+        else if (curSupply < 6666) return _SALE_PRICE2;
+        else return _SALE_PRICE3;
     }
 
     /**
