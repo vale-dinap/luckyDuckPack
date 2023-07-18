@@ -98,9 +98,9 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // Resting prices for the second minting phase (Dutch auctions) - auctions kick in if the collection isn't sold out during the first phase
     uint256 private constant _AUCTION1_RESTING_PRICE = 0.075 ether; // Resting price of the first Dutch Auction
     uint256 private constant _AUCTION2_RESTING_PRICE = 0.025 ether; // Resting price of the second Dutch Auction
-    // Start times and durations of the Dutch auctions
+    // Delays, durations and timestep of the Dutch auctions
     uint256 private constant _AUCTION1_START_DELAY = 2 days;
-    uint256 private constant _AUCTION2_START_DELAY = 2 days;
+    uint256 private constant _AUCTION2_START_DELAY = 1 days;
     uint256 private constant _AUCTIONS_DURATION = 1 days;
     uint256 private constant _AUCTIONS_TIMESTEP = 30 minutes;
     // Number of tokens reserved for the team
@@ -123,7 +123,7 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     //                 CUSTOM ERRORS AND EVENTS
     // =============================================================
 
-    event MintingStarted(); // Emitted when the minting is opended
+    event MintingStarted(); // Emitted when the minting is opened
 
     error InputIsZero(); // Triggered when address(0) is used as a function parameter
     error MintingNotStarted(); // Occurs when trying to mint before mintingStarted is enabled
@@ -200,11 +200,20 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Get the current price.
+     * @notice Get the current price. If the minting hasn't started, returns the initial
+     * minting price.
      */
     function currentPrice() external view returns (uint256) {
-        if (mintingStartTime==0) return _SALE_PRICE1;
+        if (mintingStartTime == 0) return _SALE_PRICE1;
         return _currentPrice_t6y();
+    }
+
+    /**
+     * @notice Checks if the minting process has been initiated.
+     * @return A boolean value indicating whether the minting process has started or not.
+     */
+    function mintingStarted() external view returns (bool) {
+        return mintingStartTime != 0;
     }
 
     // =============================================================
@@ -271,31 +280,34 @@ contract LDPMinter is Ownable, ReentrancyGuard {
      * @dev Returns the current price.
      */
     function _currentPrice_t6y() private view returns (uint256) {
+        // Copy mint start time to a memory variable to reduce the storage operations (save gas)
         uint256 mintingStart = mintingStartTime;
-        uint256 cTime = block.timestamp;
-        uint256 auction1StartTime;
+
+        // If the first Dutch auction hasn't started, return the initial sale price
+        uint256 auction1StartTime; // Initialize auction 1 start time variable
         unchecked {
-            auction1StartTime = mintingStart + _AUCTION1_START_DELAY;
+            auction1StartTime = mintingStart + _AUCTION1_START_DELAY; // Compute auction 1 start time
         }
-        if (cTime < auction1StartTime) return _salePrice_gn2();
-        // If sale phase is over, compute and return price from auction 1
-        uint256 auction1EndTime;
+        if (block.timestamp < auction1StartTime) return _salePrice_gn2();
+        // The code from here is executed only if the first auction has started
+        // Compute and return price for the first auction
+        uint256 auction1EndTime; // Initialize auction 1 end time variable
         unchecked {
-            auction1EndTime = auction1StartTime + _AUCTIONS_DURATION;
+            auction1EndTime = auction1StartTime + _AUCTIONS_DURATION; // Compute auction 1 end time
         }
-        if (cTime < auction1EndTime)
+        if (block.timestamp < auction1EndTime) // If auction 1 hasn't ended, return its current price
             return
                 _dutchAuctionPrice_Ts0(
                     DutchAuction({
-                        startPrice: _SALE_PRICE3,
+                        startPrice: _SALE_PRICE2, // Auction 1 starts at the median sale price
                         restingPrice: _AUCTION1_RESTING_PRICE,
                         startTime: auction1StartTime,
                         endTime: auction1EndTime,
                         timeStep: _AUCTIONS_TIMESTEP
                     }),
-                    cTime
+                    block.timestamp
                 );
-        // If aunction 1 is over, compute and return price from auction 2
+        // The code from here is executed only if the second auction has started
         uint256 auction2StartTime;
         uint256 auction2EndTime;
         unchecked {
@@ -305,13 +317,13 @@ contract LDPMinter is Ownable, ReentrancyGuard {
         return
             _dutchAuctionPrice_Ts0(
                 DutchAuction({
-                    startPrice: _AUCTION1_RESTING_PRICE,
+                    startPrice: _AUCTION1_RESTING_PRICE, // Auction 2 starts at the Auction 1 resting price
                     restingPrice: _AUCTION2_RESTING_PRICE,
                     startTime: auction2StartTime,
                     endTime: auction2EndTime,
                     timeStep: _AUCTIONS_TIMESTEP
                 }),
-                cTime
+                block.timestamp
             );
     }
 
