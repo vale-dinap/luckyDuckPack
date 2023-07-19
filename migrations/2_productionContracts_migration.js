@@ -1,6 +1,24 @@
-const LuckyDuckPack = artifacts.require("LuckyDuckPack");
-const LDPMinter = artifacts.require("LDPMinter");
-const LDPRewarder = artifacts.require("LDPRewarder");
+const MAINNET_LuckyDuckPack = artifacts.require("LuckyDuckPack");
+const MAINNET_LDPMinter = artifacts.require("LDPMinter");
+const MAINNET_LDPRewarder = artifacts.require("LDPRewarder");
+const TESTNET_LuckyDuckPack = artifacts.require("LuckyDuckPack_TESTNET");
+const TESTNET_LDPMinter = artifacts.require("LDPMinter_TESTNET");
+const TESTNET_LDPRewarder = artifacts.require("LDPRewarder_TESTNET");
+
+const USE_TESTNET_CONTRACTS = true;
+
+let LuckyDuckPack, LDPMinter, LDPRewarder;
+
+if (USE_TESTNET_CONTRACTS){
+  LuckyDuckPack = TESTNET_LuckyDuckPack;
+  LDPMinter = TESTNET_LDPMinter;
+  LDPRewarder = TESTNET_LDPRewarder;
+}
+else {
+  LuckyDuckPack = MAINNET_LuckyDuckPack;
+  LDPMinter = MAINNET_LDPMinter;
+  LDPRewarder = MAINNET_LDPRewarder;
+}
 
 // Receiving the creator's cut of creator fees
 const creatorAddress = process.env.CREATOR_ADDRESS;

@@ -3,8 +3,8 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./lib/interfaces/ILDP.sol";
-import "./lib/tools/WethUnwrapper.sol";
+import "../lib/interfaces/ILDP.sol";
+import "../lib/tools/WethUnwrapper.sol";
 
 /**
  * @title Lucky Duck Pack Rewarder
@@ -107,7 +107,7 @@ contract LDPRewarder is ReentrancyGuard {
     // Lucky Duck Pack NFT contract
     ILDP public immutable NFT;
     // WETH token address and WETH Unwrapper contract
-    address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address private constant WETH = 0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6; // Goerli
     WethUnwrapper private immutable wethUnwrapper;
 
     // =============================================================
@@ -247,11 +247,9 @@ contract LDPRewarder is ReentrancyGuard {
      * @param tokenAddress The address of the ERC20 token contract for which
      * the rewards will be cashed out
      */
-    function cashoutErc20(address tokenAddress)
-        external
-        nonReentrant
-        noWeth(tokenAddress)
-    {
+    function cashoutErc20(
+        address tokenAddress
+    ) external nonReentrant noWeth(tokenAddress) {
         // Update the ERC20-token records for the specified token contract
         _updateErc20Revenues_a8w(tokenAddress);
         // Cash out the ERC20-token rewards for the calling account
@@ -263,11 +261,10 @@ contract LDPRewarder is ReentrancyGuard {
      * @param tokenId The ID of the Duck for which the ERC20-token rewards will be cashed out
      * @param tokenAddress The address of the ERC20 token contract
      */
-    function nftCashoutErc20(uint256 tokenId, address tokenAddress)
-        external
-        nonReentrant
-        noWeth(tokenAddress)
-    {
+    function nftCashoutErc20(
+        uint256 tokenId,
+        address tokenAddress
+    ) external nonReentrant noWeth(tokenAddress) {
         _nftCashout_0G0(tokenId, tokenAddress);
     }
 
@@ -282,11 +279,9 @@ contract LDPRewarder is ReentrancyGuard {
      * @notice Similar to {creatorCashout} but works with any ERC20 token.
      * @param tokenAddress Address of the ERC20 token contract.
      */
-    function creatorCashoutErc20(address tokenAddress)
-        external
-        nonReentrant
-        noWeth(tokenAddress)
-    {
+    function creatorCashoutErc20(
+        address tokenAddress
+    ) external nonReentrant noWeth(tokenAddress) {
         _creatorCashout_gl3(tokenAddress);
     }
 
@@ -303,10 +298,9 @@ contract LDPRewarder is ReentrancyGuard {
      * a manual update).
      * @param tokenAddress Address of the ERC20 token contract
      */
-    function forceUpdateErc20Records(address tokenAddress)
-        external
-        noWeth(tokenAddress)
-    {
+    function forceUpdateErc20Records(
+        address tokenAddress
+    ) external noWeth(tokenAddress) {
         _updateErc20Revenues_a8w(tokenAddress);
     }
 
@@ -325,11 +319,9 @@ contract LDPRewarder is ReentrancyGuard {
      * @return accruedRewards The total unclaimed rewards of the tokens
      * held by the specified account
      */
-    function accountRevenues(address account)
-        external
-        view
-        returns (uint256 accruedRewards)
-    {
+    function accountRevenues(
+        address account
+    ) external view returns (uint256 accruedRewards) {
         // Get the number of tokens owned by the specified account
         uint256 numOwned = NFT.balanceOf(account);
         // Iterate through all the tokens owned by the account
@@ -340,7 +332,9 @@ contract LDPRewarder is ReentrancyGuard {
                 NFT.tokenOfOwnerByIndex(account, i)
             );
             // Increment the index (no need to check for overflow)
-            unchecked {++i;}
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -355,11 +349,10 @@ contract LDPRewarder is ReentrancyGuard {
      * @return accruedRewards The total unclaimed rewards (in the given
      * ERC20-token) of the tokens held by the specified account
      */
-    function accountRevenuesErc20(address account, address tokenAddress)
-        external
-        view
-        returns (uint256 accruedRewards)
-    {
+    function accountRevenuesErc20(
+        address account,
+        address tokenAddress
+    ) external view returns (uint256 accruedRewards) {
         // If the tokenAddress is WETH, always return 0 (there is a separate set of functions for WETH)
         if (tokenAddress == WETH) return 0;
         else {
@@ -373,7 +366,9 @@ contract LDPRewarder is ReentrancyGuard {
                     NFT.tokenOfOwnerByIndex(account, i)
                 );
                 // Increment the index (no need to check for overflow)
-                unchecked {++i;}
+                unchecked {
+                    ++i;
+                }
             }
         }
     }
@@ -392,11 +387,10 @@ contract LDPRewarder is ReentrancyGuard {
      * @return The total unclaimed rewards of the specified NFT in the given
      * ERC20-token
      */
-    function nftRevenuesErc20(uint256 tokenId, address tokenAddress)
-        external
-        view
-        returns (uint256)
-    {
+    function nftRevenuesErc20(
+        uint256 tokenId,
+        address tokenAddress
+    ) external view returns (uint256) {
         // If the tokenAddress is WETH, always return 0 (there is a separate set of functions for WETH)
         if (tokenAddress == WETH) return 0;
         // Otherwise return the ERC20-token rewards of the specified NFT
@@ -408,11 +402,9 @@ contract LDPRewarder is ReentrancyGuard {
      * up to date.
      * @param tokenAddress Address of the ERC20 token contract.
      */
-    function isErc20RecordsUpToDate(address tokenAddress)
-        external
-        view
-        returns (bool)
-    {
+    function isErc20RecordsUpToDate(
+        address tokenAddress
+    ) external view returns (bool) {
         if (tokenAddress == WETH) return true;
         else
             return
@@ -434,11 +426,9 @@ contract LDPRewarder is ReentrancyGuard {
      * @return The total lifetime rewards (in the given ERC20 token) of the NFT
      * holders
      */
-    function collectionEarningsLifetime(address tokenContract)
-        external
-        view
-        returns (uint256)
-    {
+    function collectionEarningsLifetime(
+        address tokenContract
+    ) external view returns (uint256) {
         return _erc20Rewards[tokenContract].lifetimeAccrued * 10000;
     }
 
@@ -533,7 +523,10 @@ contract LDPRewarder is ReentrancyGuard {
      * @param account Account address
      * @param tokenAddress Address of the ERC20 token contract
      */
-    function _accountCashout_h8W(address account, address tokenAddress) private {
+    function _accountCashout_h8W(
+        address account,
+        address tokenAddress
+    ) private {
         uint256 amount;
         uint256 numOwned = NFT.balanceOf(account);
         for (uint256 i; i < numOwned; ) {
@@ -572,10 +565,10 @@ contract LDPRewarder is ReentrancyGuard {
      * @param tokenId Id of the token to be used for cashout
      * @param tokenAddress Address of the ERC20 token contract
      */
-    function _nftCashout_0G0(uint256 tokenId, address tokenAddress)
-        private
-        onlyTokenOwner(tokenId)
-    {
+    function _nftCashout_0G0(
+        uint256 tokenId,
+        address tokenAddress
+    ) private onlyTokenOwner(tokenId) {
         uint256 amount = _processWithdrawData_Il8(
             _erc20Rewards[tokenAddress],
             tokenId

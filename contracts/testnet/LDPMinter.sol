@@ -3,7 +3,7 @@ pragma solidity 0.8.19;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "./lib/interfaces/ILDP.sol";
+import "../lib/interfaces/ILDP.sol";
 
 /**
  * @title Lucky Duck Pack Minter
@@ -84,7 +84,7 @@ import "./lib/interfaces/ILDP.sol";
  * this disclaimer, and agree to be bound by its terms.
  * --------------------------------------------------------------------------
  */
-contract LDPMinter is Ownable, ReentrancyGuard {
+contract LDPMinter_TESTNET is Ownable, ReentrancyGuard {
 
     // =============================================================
     //                         CUSTOM TYPES
@@ -107,19 +107,20 @@ contract LDPMinter is Ownable, ReentrancyGuard {
     // =============================================================
     //                   CONSTANTS / IMMUTABLES
     // =============================================================
-
+    // NOTE: The values of constants in Testnet and Mainnet contracts differ.
+    
     // Prices during the first minting phase (standard sale)
-    uint256 private constant _SALE_PRICE1 = 0.25 ether; // Price for tokens 1 to 3333
-    uint256 private constant _SALE_PRICE2 = 0.75 ether; // Price for tokens 3334 to 6666
-    uint256 private constant _SALE_PRICE3 = 1.25 ether; // Price for tokens 6667 to 10000
+    uint256 private constant _SALE_PRICE1 = 0.0025 ether; // Price for tokens 1 to 3333
+    uint256 private constant _SALE_PRICE2 = 0.0075 ether; // Price for tokens 3334 to 6666
+    uint256 private constant _SALE_PRICE3 = 0.0125 ether; // Price for tokens 6667 to 10000
     // Resting prices for the second minting phase (Dutch auctions) - auctions kick in if the collection isn't sold out during the first phase
-    uint256 private constant _AUCTION1_RESTING_PRICE = 0.075 ether; // Resting price of the first Dutch Auction
-    uint256 private constant _AUCTION2_RESTING_PRICE = 0.025 ether; // Resting price of the second Dutch Auction
+    uint256 private constant _AUCTION1_RESTING_PRICE = 0.00075 ether; // Resting price of the first Dutch Auction
+    uint256 private constant _AUCTION2_RESTING_PRICE = 0.00025 ether; // Resting price of the second Dutch Auction
     // Delays, durations and timestep of the Dutch auctions
-    uint256 private constant _AUCTION1_START_DELAY = 2 days;
-    uint256 private constant _AUCTION2_START_DELAY = 1 days;
-    uint256 private constant _AUCTIONS_DURATION = 1 days;
-    uint256 private constant _AUCTIONS_TIMESTEP = 30 minutes;
+    uint256 private constant _AUCTION1_START_DELAY = 30 minutes;
+    uint256 private constant _AUCTION2_START_DELAY = 30 minutes;
+    uint256 private constant _AUCTIONS_DURATION = 15 minutes;
+    uint256 private constant _AUCTIONS_TIMESTEP = 5 minutes;
     // Number of tokens reserved for the team
     uint256 private constant _TEAM_RESERVED = 50;
     // Instance of the token contract
