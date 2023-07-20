@@ -69,7 +69,7 @@ import "../lib/tools/WethUnwrapper.sol";
  * disclaimer, and agree to be bound by its terms.
  * --------------------------------------------------------------------------
  */
-contract LDPRewarder is ReentrancyGuard {
+contract LDPRewarder_TESTNET is ReentrancyGuard {
 
     // =============================================================
     //                        CUSTOM TYPES

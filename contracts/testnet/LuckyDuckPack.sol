@@ -273,7 +273,7 @@ contract LuckyDuckPack_TESTNET is
      * @dev Requires sufficient LINK balance to cover the VRF request fee
      */
     function reveal() external returns (bytes32 requestId) {
-        require(totalSupply == MAX_SUPPLY, "Minting still in progress");
+        //require(totalSupply == MAX_SUPPLY, "Minting still in progress"); // Disabled in this testnet version
         require(!_revealRequested, "Reveal already requested");
         require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
         _revealRequested = true; // Prevent being called more than once
