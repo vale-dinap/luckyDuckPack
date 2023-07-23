@@ -5,7 +5,8 @@ const TESTNET_LuckyDuckPack = artifacts.require("LuckyDuckPack_TESTNET");
 const TESTNET_LDPMinter = artifacts.require("LDPMinter_TESTNET");
 const TESTNET_LDPRewarder = artifacts.require("LDPRewarder_TESTNET");
 
-const USE_TESTNET_CONTRACTS = true;
+const DO_DEPLOY = process.env.DEPLOY_NFT_CONTRACTS;
+const USE_TESTNET_CONTRACTS = process.env.USE_NFT_TESTNET_CONTRACTS;
 
 let LuckyDuckPack, LDPMinter, LDPRewarder;
 
@@ -27,15 +28,19 @@ const payoutAddress = process.env.PAYOUT_ADDRESS;
 
 module.exports = async (deployer, network) => {
 
-  if(network !=  "test"){
+  if(DO_DEPLOY) {
 
-    await deployer.deploy(LuckyDuckPack);
-    let NFTcontract = await LuckyDuckPack.deployed();
+    if(network !=  "test") {
 
-    await deployer.deploy(LDPRewarder, NFTcontract.address, creatorAddress);
-    let rewarderContract = await LDPRewarder.deployed();
+      await deployer.deploy(LuckyDuckPack);
+      let NFTcontract = await LuckyDuckPack.deployed();
 
-    await deployer.deploy(LDPMinter, NFTcontract.address, rewarderContract.address, payoutAddress);
+      await deployer.deploy(LDPRewarder, NFTcontract.address, creatorAddress);
+      let rewarderContract = await LDPRewarder.deployed();
+
+      await deployer.deploy(LDPMinter, NFTcontract.address, rewarderContract.address, payoutAddress);
+    }
+
   }
   
 };
