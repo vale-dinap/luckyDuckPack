@@ -53,14 +53,14 @@ contract LDPLuckyDraw is
     //                      CHAINLINK CONSTANTS
     // =============================================================
 
-    // LINK token contract
-    address private constant _LINKTOKEN = 0x514910771AF9Ca656af840dff83E8264EcF986CA;
-    // Chainlink VRF contract
-    address private constant _VRFCOORDINATOR = 0xf0d54349aDdcf704F77AE15b96510dEA15cb7952;
-    // 2 LINK fee on Ethereum Mainnet
-    uint256 private constant _CHAINLINKFEE = 2 ether;
-    // Key hash required by Chainlink VRF
-    bytes32 private constant _CHAINLINKKEYHASH = 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445;
+    // LINK token contract - Polygon network
+    address private constant _LINKTOKEN = 0xb0897686c545045aFc77CF20eC7A532E3120E0F1;
+    // Chainlink VRF contract - Polygon Network
+    address private constant _VRFCOORDINATOR = 0x3d2341ADb2D31f1c5530cDC622016af293177AE0;
+    // 0.0001 LINK fee on Polygon
+    uint256 private constant _CHAINLINKFEE = 0.0001 ether;
+    // Key hash required by Chainlink VRF - Polygon Network
+    bytes32 private constant _CHAINLINKKEYHASH = 0xf86195cf7690c55907b2b611ebb7343a6f649bff128701cc542f0569e2c549da;
 
     // =============================================================
     //               CONTRACT VARIABLES AND CONSTANTS
