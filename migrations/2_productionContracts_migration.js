@@ -10,7 +10,7 @@ const USE_TESTNET_CONTRACTS = process.env.USE_NFT_TESTNET_CONTRACTS;
 
 let LuckyDuckPack, LDPMinter, LDPRewarder;
 
-if (USE_TESTNET_CONTRACTS){
+if (USE_TESTNET_CONTRACTS==1){
   LuckyDuckPack = TESTNET_LuckyDuckPack;
   LDPMinter = TESTNET_LDPMinter;
   LDPRewarder = TESTNET_LDPRewarder;
@@ -28,7 +28,7 @@ const payoutAddress = process.env.PAYOUT_ADDRESS;
 
 module.exports = async (deployer, network) => {
 
-  if(DO_DEPLOY) {
+  if(DO_DEPLOY==1) {
 
     if(network !=  "test") {
 
