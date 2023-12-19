@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
-import "operator-filter-registry/src/DefaultOperatorFilterer.sol";
 
 /**
  * @title Lucky Duck Pack NFT contract
@@ -62,7 +61,6 @@ contract LuckyDuckPack is
     Ownable,                            // Admin role
     ERC721("Lucky Duck Pack", "LDP"),   // NFT token standard
     ERC2981,                            // Royalty info standard
-    DefaultOperatorFilterer,            // Prevent trades on marketplaces not honoring creator fees
     VRFConsumerBase                     // Chainlink Random (for collection reveal)
 {
     using Strings for uint256;
@@ -437,62 +435,60 @@ contract LuckyDuckPack is
     //                   CREATOR FEES ENFORCEMENT
     // =============================================================
 
-    // This section implements the Operator Filterer developed by Opensea (prevent
-    // token sales on marketplaces that don't honor creator fees).
+    // This section is meant to enforce the royalty payment to the rewarder contract. However,
+    // it is just a placeholder for now as it has no effect on the contract's behavior.
     
     /**
-     * @dev Adds {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
+     * @dev PLACEHOLDER: adds restrictions to setApprovalForAll()
      */
     function setApprovalForAll(address operator, bool approved)
         public
         override
-        onlyAllowedOperatorApproval(operator)
     {
         super.setApprovalForAll(operator, approved);
     }
 
     /**
-     * @dev Adds {OperatorFilterer-onlyAllowedOperatorApproval} modifier.
+     * @dev PLACEHOLDER: adds restrictions to approve()
      */
     function approve(address operator, uint256 tokenId)
         public
         override
-        onlyAllowedOperatorApproval(operator)
     {
         super.approve(operator, tokenId);
     }
 
     /**
-     * @dev Adds {OperatorFilterer-onlyAllowedOperator} modifier.
+     * @dev PLACEHOLDER: adds restrictions to transferFrom()
      */
     function transferFrom(
         address from,
         address to,
         uint256 tokenId
-    ) public override onlyAllowedOperator(from) {
+    ) public override {
         super.transferFrom(from, to, tokenId);
     }
 
     /**
-     * @dev Adds {OperatorFilterer-onlyAllowedOperator} modifier.
+     * @dev PLACEHOLDER: adds restrictions to safeTransferFrom()
      */
     function safeTransferFrom(
         address from,
         address to,
         uint256 tokenId
-    ) public override onlyAllowedOperator(from) {
+    ) public override {
         super.safeTransferFrom(from, to, tokenId);
     }
 
     /**
-     * @dev Adds {OperatorFilterer-onlyAllowedOperator} modifier.
+     * @dev PLACEHOLDER: adds restrictions to safeTransferFrom()
      */
     function safeTransferFrom(
         address from,
         address to,
         uint256 tokenId,
         bytes memory data
-    ) public override onlyAllowedOperator(from) {
+    ) public override {
         super.safeTransferFrom(from, to, tokenId, data);
     }
 
